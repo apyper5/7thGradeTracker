@@ -372,16 +372,79 @@
                 const totalReqs = rows.length;
                 const overallPercent = Math.round((totalCompleted / totalReqs) * 100);
                 
-                let html = '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8 mb-2"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm transition-all duration-500" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
+                // GAMIFICATION: Calculate XP and Level
+                const xp = totalCompleted * 10;
+                const level = Math.floor(xp / 100) + 1;
+                const xpInCurrentLevel = xp % 100;
+                const xpToNextLevel = 100;
+                const levelPercent = Math.round((xpInCurrentLevel / xpToNextLevel) * 100);
                 
-                // Display each subject
+                const levelTitles = {
+                    1: 'Beginner Scholar',
+                    2: 'Scholar',
+                    3: 'Dedicated Student',
+                    4: 'Apprentice',
+                    5: 'Skilled Learner',
+                    6: 'Advanced Student',
+                    7: 'Expert',
+                    8: 'Master Student',
+                    9: 'Elite Scholar',
+                    10: 'Champion'
+                };
+                const levelTitle = levelTitles[Math.min(level, 10)] || 'Champion';
+                
+                // GAMIFICATION: Check achievements
+                const achievements = [
+                    { id: 'first_step', name: 'First Step', desc: 'Complete your first requirement', icon: '🎯', unlocked: totalCompleted >= 1 },
+                    { id: 'getting_started', name: 'Getting Started', desc: 'Complete 10 requirements', icon: '🔥', unlocked: totalCompleted >= 10 },
+                    { id: 'halfway', name: 'Half Way There', desc: 'Reach 50% completion', icon: '⭐', unlocked: overallPercent >= 50 },
+                    { id: 'almost_done', name: 'Almost Done', desc: 'Reach 75% completion', icon: '🏆', unlocked: overallPercent >= 75 },
+                    { id: 'champion', name: '7th Grade Champion', desc: 'Complete 100%!', icon: '👑', unlocked: overallPercent >= 100 }
+                ];
+                
+                const unlockedCount = achievements.filter(a => a.unlocked).length;
+                
+                // Start building HTML
+                let html = '';
+                
+                // XP & Level Section
+                html += '<div class="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg shadow-lg p-6 mb-6 text-white">';
+                html += '<div class="flex justify-between items-center mb-3">';
+                html += '<div><h2 class="text-2xl font-bold">Level ' + level + ' - ' + levelTitle + '</h2>';
+                html += '<p class="text-purple-100 text-sm">' + xp + ' XP earned • ' + (xpToNextLevel - xpInCurrentLevel) + ' XP to next level</p></div>';
+                html += '<div class="text-4xl">🎓</div></div>';
+                html += '<div class="w-full bg-purple-700 rounded-full h-4"><div class="h-full bg-yellow-400 rounded-full transition-all duration-500" style="width: ' + levelPercent + '%"></div></div>';
+                html += '</div>';
+                
+                // Achievements Section
+                html += '<div class="bg-white rounded-lg shadow-lg p-6 mb-6">';
+                html += '<h2 class="text-xl font-bold text-gray-800 mb-4">Achievements (' + unlockedCount + '/' + achievements.length + ')</h2>';
+                html += '<div class="grid grid-cols-2 md:grid-cols-5 gap-4">';
+                achievements.forEach(ach => {
+                    const unlockClass = ach.unlocked ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 border-yellow-400' : 'bg-gray-100 border-gray-300 opacity-50';
+                    html += '<div class="border-2 ' + unlockClass + ' rounded-lg p-4 text-center">';
+                    html += '<div class="text-4xl mb-2">' + ach.icon + '</div>';
+                    html += '<div class="font-bold text-sm text-gray-800">' + ach.name + '</div>';
+                    html += '<div class="text-xs text-gray-600 mt-1">' + ach.desc + '</div>';
+                    if (ach.unlocked) {
+                        html += '<div class="text-xs text-green-600 font-semibold mt-2">✓ Unlocked</div>';
+                    } else {
+                        html += '<div class="text-xs text-gray-500 mt-2">🔒 Locked</div>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div></div>';
+                
+                // Overall Progress
+                html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8 mb-2"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm transition-all duration-500" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
+                
+                // Display each subject (rest of the code stays the same)
                 for (const [subject, items] of Object.entries(bySubject)) {
                     const subjectCompleted = items.filter(i => i.completed).length;
                     const subjectTotal = items.length;
                     const subjectPercent = Math.round((subjectCompleted / subjectTotal) * 100);
                     const trackName = items[0].track;
                     
-                    // Color coding by subject
                     const colors = {
                         'ELA': { bar: 'bg-blue-600', text: 'text-blue-800', bg: 'bg-blue-50' },
                         'Math': { bar: 'bg-purple-600', text: 'text-purple-800', bg: 'bg-purple-50' },
@@ -406,7 +469,6 @@
                     
                     html += '<div id="' + subjectId + '" style="display: ' + (isSubjectCollapsed ? 'none' : 'block') + '">';
                     
-                    // Group by category
                     const byCategory = {};
                     items.forEach(item => {
                         if (!byCategory[item.category]) byCategory[item.category] = {};
@@ -414,7 +476,6 @@
                         byCategory[item.category][item.domain].push(item);
                     });
                     
-                    // Display requirements in document structure
                     for (const [category, domains] of Object.entries(byCategory)) {
                         const catId = subjectId + '_cat_' + category.replace(/\s+/g, '_').replace(/\./g, '_');
                         const isCatCollapsed = studentCollapsedCategories[catId];
