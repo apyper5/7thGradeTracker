@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Franklin 7th Grade Tracker</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
@@ -19,14 +18,11 @@
     <script>
         console.log('Script starting...');
         
-        const SHEET_ID = '1c2morY1tLIv2pzyE0yWAMZKOq3Bt-myK9Z5f2ydsNPY';
+        // SECURE: No API keys exposed - all calls go through Apps Script
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx853Gb0BylD62JN3li9kZHbV_NjcHs1tfuMsaFWZnbgcZjHbJvGsIOAX7DTjPiDNc2og/exec';
         const CLIENT_ID = '326589757916-ce3tt4ji7hcdk1irgg0cv3f08mh1f7qj.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyBO6nYreDN_rfTWSId2qY8EAJdcOE7kIgo';
-        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-        const ADMIN_PASSWORD = '7foxes';
         
         let tokenClient;
-        let gapiInited = false;
         let gisInited = false;
         let currentView = 'login';
         let currentUser = null;
@@ -39,58 +35,38 @@
         let studentCollapsedSubjects = {};
         let studentCollapsedCategories = {};
         let studentCollapsedDomains = {};
-        
-        function gapiLoaded() {
-            console.log('GAPI loaded');
-            gapi.load('client', initializeGapiClient);
-        }
-        
-        async function initializeGapiClient() {
-            console.log('Initializing GAPI client');
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-            });
-            gapiInited = true;
-            console.log('GAPI initialized');
-            maybeEnableButtons();
-        }
+        let accessToken = null;
         
         function gisLoaded() {
             console.log('GIS loaded');
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
-                scope: SCOPES,
+                scope: 'https://www.googleapis.com/auth/spreadsheets',
                 callback: '',
             });
             gisInited = true;
-            maybeEnableButtons();
+            console.log('Ready! Rendering app...');
+            renderApp();
         }
         
-        function maybeEnableButtons() {
-            console.log('Checking if ready...', gapiInited, gisInited);
-            if (gapiInited && gisInited) {
-                console.log('Ready! Rendering app...');
-                renderApp();
+        // Call Apps Script securely
+        async function callAppsScript(params, method = 'GET') {
+            const url = new URL(APPS_SCRIPT_URL);
+            
+            if (method === 'GET') {
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+                const response = await fetch(url);
+                return await response.json();
+            } else {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                return await response.json();
             }
-        }
-        
-        async function fetchSheet(sheetName) {
-            const response = await gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: SHEET_ID,
-                range: sheetName,
-            });
-            return response.result.values || [];
-        }
-        
-        async function updateCell(sheetName, range, value) {
-            const response = await gapi.client.sheets.spreadsheets.values.update({
-                spreadsheetId: SHEET_ID,
-                range: sheetName + '!' + range,
-                valueInputOption: 'RAW',
-                resource: { values: [[value]] }
-            });
-            return response.result;
         }
         
         function renderApp() {
@@ -98,7 +74,33 @@
             const root = document.getElementById('root');
             
             if (currentView === 'login') {
-                root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8"><div class="max-w-4xl mx-auto"><div class="text-center mb-12"><h1 class="text-4xl font-bold text-gray-800 mb-2">Franklin 7th Grade Tracker</h1><p class="text-gray-600">Student Progress Tracking System</p></div><div id="error-message"></div><div class="grid md:grid-cols-2 gap-8"><div class="bg-white rounded-lg shadow-lg p-8"><h2 class="text-2xl font-bold text-gray-800 mb-6">Teacher Login</h2><button onclick="handleTeacherLogin()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">Sign in with Google</button><p class="text-xs text-gray-500 mt-2">You will be prompted to sign in with your Google account</p></div><div class="bg-white rounded-lg shadow-lg p-8"><h2 class="text-2xl font-bold text-gray-800 mb-6">Student/Parent Login</h2><input type="text" id="student-code" placeholder="Enter access code" class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"><button onclick="handleStudentLogin()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">View Progress</button></div></div></div></div>';
+                root.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="text-center mb-12">
+                                <h1 class="text-4xl font-bold text-gray-800 mb-2">Franklin 7th Grade Tracker</h1>
+                                <p class="text-gray-600">Student Progress Tracking System</p>
+                            </div>
+                            <div id="error-message"></div>
+                            <div class="grid md:grid-cols-2 gap-8">
+                                <div class="bg-white rounded-lg shadow-lg p-8">
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Teacher Login</h2>
+                                    <button onclick="handleTeacherLogin()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
+                                        Sign in with Google
+                                    </button>
+                                    <p class="text-xs text-gray-500 mt-2">You will be prompted to sign in with your Google account</p>
+                                </div>
+                                <div class="bg-white rounded-lg shadow-lg p-8">
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Student/Parent Login</h2>
+                                    <input type="text" id="student-code" placeholder="Enter access code" class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <button onclick="handleStudentLogin()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                                        View Progress
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             } else if (currentView === 'admin') {
                 renderAdminView();
             } else if (currentView === 'student') {
@@ -115,11 +117,12 @@
                     showError('Authorization failed');
                     return;
                 }
+                accessToken = resp.access_token;
                 currentView = 'admin';
                 renderApp();
             };
             
-            if (gapi.client.getToken() === null) {
+            if (accessToken === null) {
                 tokenClient.requestAccessToken({prompt: 'consent'});
             } else {
                 tokenClient.requestAccessToken({prompt: ''});
@@ -129,20 +132,26 @@
         async function handleStudentLogin() {
             console.log('Student login clicked');
             const code = document.getElementById('student-code').value.toUpperCase();
+            
+            if (!code) {
+                showError('Please enter an access code');
+                return;
+            }
+            
             try {
-                const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Students?key=' + API_KEY;
-                const response = await fetch(url);
-                const data = await response.json();
-                const students = data.values;
+                const result = await callAppsScript({ action: 'studentLogin', code: code });
                 
-                const studentRow = students.slice(1).find(row => row[2] === code);
-                if (studentRow) {
-                    currentUser = { id: studentRow[0], name: studentRow[1], code: studentRow[2] };
-                    currentView = 'student';
-                    renderApp();
-                } else {
-                    showError('Invalid access code');
+                if (result.error) {
+                    showError(result.error);
+                    return;
                 }
+                
+                // Store student data
+                currentUser = result.student;
+                currentUser.progressData = result.progress;
+                
+                currentView = 'student';
+                renderApp();
             } catch (err) {
                 console.error('Student login error:', err);
                 showError('Failed to connect');
@@ -152,16 +161,46 @@
         async function renderAdminView() {
             console.log('Rendering admin view');
             const root = document.getElementById('root');
-            root.innerHTML = '<div class="min-h-screen bg-gray-50 p-8"><div class="max-w-7xl mx-auto"><div class="flex justify-between items-center mb-8"><h1 class="text-3xl font-bold text-gray-800">Teacher Admin Panel</h1><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div id="save-status" class="mb-4"></div><div class="bg-white rounded-lg shadow p-6 mb-4"><label class="block text-sm font-semibold text-gray-700 mb-2">Select Student:</label><select id="student-select" onchange="handleStudentChange()" class="w-full px-4 py-3 border border-gray-300 rounded-lg"><option value="">Loading...</option></select></div><div class="mb-4 flex gap-2"><button onclick="collapseAll()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Collapse All</button><button onclick="expandAll()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Expand All</button></div><div id="admin-content"><p>Loading requirements...</p></div></div></div>';
+            root.innerHTML = `
+                <div class="min-h-screen bg-gray-50 p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="flex justify-between items-center mb-8">
+                            <h1 class="text-3xl font-bold text-gray-800">Teacher Admin Panel</h1>
+                            <button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button>
+                        </div>
+                        <div id="save-status" class="mb-4"></div>
+                        <div class="bg-white rounded-lg shadow p-6 mb-4">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Student:</label>
+                            <select id="student-select" onchange="handleStudentChange()" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="mb-4 flex gap-2">
+                            <button onclick="collapseAll()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Collapse All</button>
+                            <button onclick="expandAll()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Expand All</button>
+                        </div>
+                        <div id="admin-content">
+                            <p>Loading requirements...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
             await loadStudentsList();
         }
         
         async function loadStudentsList() {
             try {
-                const data = await fetchSheet('Students');
-                studentsList = data.slice(1).map(row => ({ id: row[0], name: row[1] }));
+                const result = await callAppsScript({}, 'POST');
+                const data = await callAppsScript({ action: 'getStudentsList' }, 'POST');
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                studentsList = data.students;
                 const select = document.getElementById('student-select');
-                select.innerHTML = studentsList.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
+                select.innerHTML = studentsList.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
                 selectedStudent = studentsList[0].id;
                 await loadStudentRequirements();
             } catch (err) {
@@ -177,17 +216,17 @@
         
         async function loadStudentRequirements() {
             try {
-                const data = await fetchSheet('Student_' + selectedStudent);
-                studentData = data.slice(1).map((row, idx) => ({
-                    rowNum: idx + 2,
-                    subject: row[0] || '',
-                    track: row[1] || '',
-                    category: row[2] || '',
-                    domain: row[3] || '',
-                    requirement: row[4] || '',
-                    completed: row[5] || '',
-                    note: row[6] || ''
-                }));
+                const result = await callAppsScript({ 
+                    action: 'getStudentData', 
+                    studentId: selectedStudent 
+                }, 'POST');
+                
+                if (result.error) {
+                    showError(result.error);
+                    return;
+                }
+                
+                studentData = result.data;
                 renderStudentRequirements();
             } catch (err) {
                 console.error('Load requirements error:', err);
@@ -198,19 +237,14 @@
         function renderStudentRequirements() {
             // Sort studentData before grouping
             studentData.sort((a, b) => {
-                // First by subject
                 if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
-                // Then by track
                 if (a.track !== b.track) return a.track.localeCompare(b.track);
-                // Then by category
                 if (a.category !== b.category) return a.category.localeCompare(b.category);
-                // Then by domain - extract letter if it starts with one (like "A. Integers")
                 const aDomainLetter = a.domain.match(/^([A-Z]+)\./)?.[1] || '';
                 const bDomainLetter = b.domain.match(/^([A-Z]+)\./)?.[1] || '';
                 if (aDomainLetter && bDomainLetter && aDomainLetter !== bDomainLetter) {
                     return aDomainLetter.localeCompare(bDomainLetter);
                 }
-                // Finally by domain name
                 return a.domain.localeCompare(b.domain);
             });
             
@@ -279,35 +313,25 @@
         
         function toggleSection(sectionId) {
             collapsedSections[sectionId] = !collapsedSections[sectionId];
-            const section = document.getElementById(sectionId);
-            if (section) {
-                section.style.display = collapsedSections[sectionId] ? 'none' : 'block';
-            }
             renderStudentRequirements();
         }
         
         function toggleCategory(catId) {
             collapsedCategories[catId] = !collapsedCategories[catId];
-            const cat = document.getElementById(catId);
-            if (cat) {
-                cat.style.display = collapsedCategories[catId] ? 'none' : 'block';
-            }
             renderStudentRequirements();
         }
         
         function toggleDomain(domId) {
             collapsedDomains[domId] = !collapsedDomains[domId];
-            const dom = document.getElementById(domId);
-            if (dom) {
-                dom.style.display = collapsedDomains[domId] ? 'none' : 'block';
-            }
             renderStudentRequirements();
         }
         
         function collapseAll() {
             const sections = document.querySelectorAll('[id^="section_"]');
             sections.forEach(s => {
-                collapsedSections[s.id] = true;
+                if (!s.id.includes('_cat_') && !s.id.includes('_dom_')) {
+                    collapsedSections[s.id] = true;
+                }
             });
             renderStudentRequirements();
         }
@@ -319,64 +343,57 @@
             renderStudentRequirements();
         }
         
-        async function handleUpdate(rowNum, col, value) {
+        async function handleUpdate(row, col, value) {
             try {
-                await updateCell('Student_' + selectedStudent, col + rowNum, value);
-                showSaveStatus('Saved!', 'success');
-                const idx = studentData.findIndex(r => r.rowNum === rowNum);
-                if (idx !== -1) {
-                    if (col === 'F') studentData[idx].completed = value;
-                    else studentData[idx].note = value;
+                const statusDiv = document.getElementById('save-status');
+                statusDiv.innerHTML = '<div class="bg-blue-100 text-blue-700 px-4 py-2 rounded">Saving...</div>';
+                
+                const result = await callAppsScript({
+                    action: 'updateCell',
+                    studentId: selectedStudent,
+                    row: row,
+                    col: col,
+                    value: value
+                }, 'POST');
+                
+                if (result.error) {
+                    statusDiv.innerHTML = '<div class="bg-red-100 text-red-700 px-4 py-2 rounded">Failed to save</div>';
+                } else {
+                    statusDiv.innerHTML = '<div class="bg-green-100 text-green-700 px-4 py-2 rounded">Saved ✓</div>';
+                    setTimeout(() => statusDiv.innerHTML = '', 2000);
                 }
             } catch (err) {
                 console.error('Update error:', err);
-                showSaveStatus('Save failed', 'error');
-            }
-        }
-        
-        function showSaveStatus(msg, type) {
-            const div = document.getElementById('save-status');
-            if (div) {
-                div.innerHTML = '<div class="px-4 py-2 rounded-lg ' + (type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800') + '">' + msg + '</div>';
-                setTimeout(() => div.innerHTML = '', 2000);
+                document.getElementById('save-status').innerHTML = '<div class="bg-red-100 text-red-700 px-4 py-2 rounded">Failed to save</div>';
             }
         }
         
         async function renderStudentView() {
+            console.log('Rendering student view');
             const root = document.getElementById('root');
-            root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8"><div class="max-w-5xl mx-auto"><div class="flex justify-between items-center mb-8"><div><h1 class="text-3xl font-bold text-gray-800">' + currentUser.name + '</h1><p class="text-gray-600">7th Grade Requirements</p></div><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div class="mb-4 flex gap-2"><button onclick="collapseAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Collapse All</button><button onclick="expandAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Expand All</button></div><div id="student-content">Loading...</div></div></div>';
+            root.innerHTML = `
+                <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+                    <div class="max-w-7xl mx-auto">
+                        <div class="flex justify-between items-center mb-8">
+                            <h1 class="text-3xl font-bold text-gray-800">${currentUser.name}'s Progress</h1>
+                            <button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button>
+                        </div>
+                        <div class="mb-4 flex gap-2">
+                            <button onclick="collapseAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Collapse All</button>
+                            <button onclick="expandAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Expand All</button>
+                        </div>
+                        <div id="student-content">
+                            <p>Loading progress...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
             await loadStudentProgress();
         }
         
         async function loadStudentProgress() {
             try {
-                // Get student's track selections
-                const studentsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Students?key=' + API_KEY;
-                const studentsResponse = await fetch(studentsUrl);
-                const studentsData = await studentsResponse.json();
-                const studentRow = studentsData.values.slice(1).find(row => row[0] === currentUser.id);
-                
-                const tracks = {
-                    ELA: studentRow[3] || '',
-                    Math: studentRow[4] || '',
-                    Science: studentRow[5] || '',
-                    Utah_History: studentRow[6] || '',
-                    Arts: studentRow[7] || ''
-                };
-                
-                // Get student's progress data
-                const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Student_' + currentUser.id + '?key=' + API_KEY;
-                const response = await fetch(url);
-                const data = await response.json();
-                const rows = data.values.slice(1).map(row => ({
-                    subject: row[0],
-                    track: row[1],
-                    category: row[2],
-                    domain: row[3],
-                    requirement: row[4],
-                    completed: row[5],
-                    note: row[6]
-                }));
+                const rows = currentUser.progressData;
                 
                 // Sort rows before processing
                 rows.sort((a, b) => {
@@ -469,7 +486,7 @@
                 // Overall Progress
                 html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8 mb-2"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm transition-all duration-500" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
                 
-                // Display each subject (rest of the code stays the same)
+                // Display each subject
                 for (const [subject, items] of Object.entries(bySubject)) {
                     const subjectCompleted = items.filter(i => i.completed).length;
                     const subjectTotal = items.length;
@@ -595,10 +612,9 @@
         function handleLogout() {
             currentView = 'login';
             currentUser = null;
-            const token = gapi.client.getToken();
-            if (token !== null) {
-                google.accounts.oauth2.revoke(token.access_token);
-                gapi.client.setToken('');
+            accessToken = null;
+            if (tokenClient) {
+                google.accounts.oauth2.revoke(accessToken);
             }
             renderApp();
         }
@@ -614,7 +630,6 @@
         
         window.addEventListener('load', () => {
             console.log('Window loaded, starting initialization');
-            gapiLoaded();
             gisLoaded();
         });
         
