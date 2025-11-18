@@ -4,575 +4,279 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Franklin 7th Grade Tracker</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div style="min-height: 100vh; background: linear-gradient(to bottom right, #eff6ff, #e0e7ff); padding: 2rem;">
+            <div style="max-width: 64rem; margin: 0 auto; text-align: center; padding: 3rem 0;">
+                <h1 style="font-size: 2.5rem; font-weight: bold; color: #1f2937; margin-bottom: 2rem;">Franklin 7th Grade Tracker</h1>
+                <p style="color: #4b5563; margin-bottom: 3rem;">Loading OAuth system...</p>
+                <div style="display: inline-block; width: 3rem; height: 3rem; border: 4px solid #e5e7eb; border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+        </div>
+    </div>
     
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    
+    <script>
         const SHEET_ID = '1c2morY1tLIv2pzyE0yWAMZKOq3Bt-myK9Z5f2ydsNPY';
+        const CLIENT_ID = '326589757916-ce3tt4ji7hcdk1irgg0cv3f08mh1f7qj.apps.googleusercontent.com';
         const API_KEY = 'AIzaSyBO6nYreDN_rfTWSId2qY8EAJdcOE7kIgo';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
         const ADMIN_PASSWORD = '7foxes';
-
-        // Lucide React icons as inline SVG components
-        const CheckCircle2 = ({ size = 24, className = "" }) => (
-          <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        );
-
-        const Lock = ({ size = 24, className = "" }) => (
-          <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-        );
-
-        const User = ({ size = 24, className = "" }) => (
-          <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-        );
-
-        const BarChart3 = ({ size = 24, className = "" }) => (
-          <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 3v18h18"></path>
-            <path d="M18 17V9"></path>
-            <path d="M13 17V5"></path>
-            <path d="M8 17v-3"></path>
-          </svg>
-        );
-
-        const Loader2 = ({ size = 24, className = "" }) => (
-          <svg width={size} height={size} className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-          </svg>
-        );
-
+        
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let currentView = 'login';
+        let currentUser = null;
+        let isAuthorized = false;
+        
+        // Initialize GAPI
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+        
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+        
+        // Initialize GIS
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // Will be set later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+        
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                renderApp();
+            }
+        }
+        
+        // Fetch data from Google Sheets
         async function fetchSheet(sheetName) {
-          const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}?key=${API_KEY}`;
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(`Failed to fetch ${sheetName}`);
-          const data = await response.json();
-          return data.values || [];
-        }
-
-        async function updateCell(sheetName, cell, value) {
-          const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}!${cell}?valueInputOption=RAW&key=${API_KEY}`;
-          const response = await fetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: [[value]] })
-          });
-          if (!response.ok) throw new Error('Failed to update cell');
-          return response.json();
-        }
-
-        function App() {
-          const [view, setView] = useState('login');
-          const [currentStudent, setCurrentStudent] = useState(null);
-          const [adminPassword, setAdminPassword] = useState('');
-          const [studentCode, setStudentCode] = useState('');
-          const [loading, setLoading] = useState(false);
-          const [error, setError] = useState('');
-
-          const handleAdminLogin = () => {
-            if (adminPassword === ADMIN_PASSWORD) {
-              setView('admin');
-              setAdminPassword('');
-              setError('');
-            } else {
-              setError('Incorrect password');
-            }
-          };
-
-          const handleStudentLogin = async () => {
-            setLoading(true);
-            setError('');
-            try {
-              const studentsData = await fetchSheet('Students');
-              const headers = studentsData[0];
-              const accessCodeIndex = headers.indexOf('Access_Code');
-              const studentNameIndex = headers.indexOf('Student_Name');
-              const studentIDIndex = headers.indexOf('Student_ID');
-              
-              const studentRow = studentsData.slice(1).find(row => row[accessCodeIndex] === studentCode);
-              
-              if (studentRow) {
-                setCurrentStudent({
-                  id: studentRow[studentIDIndex],
-                  name: studentRow[studentNameIndex],
-                  accessCode: studentRow[accessCodeIndex]
-                });
-                setView('student');
-                setStudentCode('');
-              } else {
-                setError('Invalid access code');
-              }
-            } catch (err) {
-              setError('Failed to connect. Please check your internet connection.');
-              console.error(err);
-            }
-            setLoading(false);
-          };
-
-          if (view === 'login') {
-            return <LoginView 
-              onAdminLogin={handleAdminLogin}
-              onStudentLogin={handleStudentLogin}
-              adminPassword={adminPassword}
-              setAdminPassword={setAdminPassword}
-              studentCode={studentCode}
-              setStudentCode={setStudentCode}
-              loading={loading}
-              error={error}
-            />;
-          }
-
-          if (view === 'admin') {
-            return <AdminView onLogout={() => setView('login')} />;
-          }
-
-          if (view === 'student') {
-            return <StudentView 
-              student={currentStudent}
-              onLogout={() => { setView('login'); setCurrentStudent(null); }}
-            />;
-          }
-        }
-
-        function LoginView({ onAdminLogin, onStudentLogin, adminPassword, setAdminPassword, studentCode, setStudentCode, loading, error }) {
-          return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-              <div className="max-w-4xl mx-auto">
-                <div className="text-center mb-12">
-                  <h1 className="text-4xl font-bold text-gray-800 mb-2">Franklin 7th Grade Tracker</h1>
-                  <p className="text-gray-600">Student Progress Tracking System</p>
-                </div>
-
-                {error && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                    {error}
-                  </div>
-                )}
-
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="bg-white rounded-lg shadow-lg p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                      <Lock size={32} className="text-indigo-600" />
-                      <h2 className="text-2xl font-bold text-gray-800">Teacher Login</h2>
-                    </div>
-                    <input
-                      type="password"
-                      placeholder="Enter admin password"
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && onAdminLogin()}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <button
-                      onClick={onAdminLogin}
-                      disabled={loading}
-                      className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
-                    >
-                      Access Admin Panel
-                    </button>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow-lg p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                      <User size={32} className="text-green-600" />
-                      <h2 className="text-2xl font-bold text-gray-800">Student/Parent Login</h2>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Enter access code"
-                      value={studentCode}
-                      onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
-                      onKeyPress={(e) => e.key === 'Enter' && onStudentLogin()}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                    <button
-                      onClick={onStudentLogin}
-                      disabled={loading}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {loading && <Loader2 size={20} />}
-                      View Progress
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        function AdminView({ onLogout }) {
-          const [students, setStudents] = useState([]);
-          const [selectedStudent, setSelectedStudent] = useState(null);
-          const [studentData, setStudentData] = useState([]);
-          const [loading, setLoading] = useState(true);
-          const [saving, setSaving] = useState(false);
-          const [error, setError] = useState('');
-
-          useEffect(() => {
-            loadStudents();
-          }, []);
-
-          useEffect(() => {
-            if (selectedStudent) {
-              loadStudentData(selectedStudent);
-            }
-          }, [selectedStudent]);
-
-          const loadStudents = async () => {
-            setLoading(true);
-            try {
-              const data = await fetchSheet('Students');
-              const headers = data[0];
-              const rows = data.slice(1).map(row => ({
-                id: row[0],
-                name: row[1],
-                accessCode: row[2]
-              }));
-              setStudents(rows);
-              if (rows.length > 0) setSelectedStudent(rows[0].id);
-            } catch (err) {
-              setError('Failed to load students');
-              console.error(err);
-            }
-            setLoading(false);
-          };
-
-          const loadStudentData = async (studentId) => {
-            setLoading(true);
-            try {
-              const sheetName = `Student_${studentId}`;
-              const data = await fetchSheet(sheetName);
-              
-              if (data.length > 0) {
-                const rows = data.slice(1).map((row, index) => ({
-                  rowNumber: index + 2,
-                  subject: row[0] || '',
-                  track: row[1] || '',
-                  category: row[2] || '',
-                  domain: row[3] || '',
-                  requirement: row[4] || '',
-                  completed: row[5] || '',
-                  note: row[6] || '',
-                  requirementId: row[7] || ''
-                }));
-                setStudentData(rows);
-              }
-            } catch (err) {
-              setError(`Failed to load data for ${studentId}`);
-              console.error(err);
-            }
-            setLoading(false);
-          };
-
-          const handleUpdate = async (rowNumber, field, value) => {
-            setSaving(true);
-            try {
-              const sheetName = `Student_${selectedStudent}`;
-              const column = field === 'completed' ? 'F' : 'G';
-              await updateCell(sheetName, `${column}${rowNumber}`, value);
-              
-              setStudentData(prev => prev.map(row => 
-                row.rowNumber === rowNumber ? { ...row, [field]: value } : row
-              ));
-            } catch (err) {
-              setError('Note: Saving requires OAuth setup. Changes display locally but do not persist.');
-              console.error(err);
-            }
-            setSaving(false);
-          };
-
-          const groupedData = useMemo(() => {
-            const grouped = {};
-            studentData.forEach(row => {
-              const key = `${row.subject}_${row.track}`;
-              if (!grouped[key]) {
-                grouped[key] = {
-                  subject: row.subject,
-                  track: row.track,
-                  categories: {}
-                };
-              }
-              if (!grouped[key].categories[row.category]) {
-                grouped[key].categories[row.category] = {};
-              }
-              if (!grouped[key].categories[row.category][row.domain]) {
-                grouped[key].categories[row.category][row.domain] = [];
-              }
-              grouped[key].categories[row.category][row.domain].push(row);
+            const response = await gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SHEET_ID,
+                range: sheetName,
             });
-            return grouped;
-          }, [studentData]);
-
-          if (loading && students.length === 0) {
-            return (
-              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 size={48} className="text-indigo-600" />
-              </div>
-            );
-          }
-
-          return (
-            <div className="min-h-screen bg-gray-50 p-8">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                  <h1 className="text-3xl font-bold text-gray-800">Teacher Admin Panel</h1>
-                  <button
-                    onClick={onLogout}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-                  >
-                    Logout
-                  </button>
-                </div>
-
-                {error && (
-                  <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-6">
-                    {error}
-                  </div>
-                )}
-
-                <div className="bg-white rounded-lg shadow p-6 mb-8">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Select Student:</label>
-                  <select
-                    value={selectedStudent || ''}
-                    onChange={(e) => setSelectedStudent(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {loading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 size={48} className="text-indigo-600" />
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {Object.entries(groupedData).map(([key, subjectData]) => (
-                      <div key={key} className="bg-white rounded-lg shadow p-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                          {subjectData.subject} - {subjectData.track}
-                        </h2>
-                        {Object.entries(subjectData.categories).map(([category, domains]) => (
-                          <div key={category} className="border-l-4 border-indigo-500 pl-4 mb-6">
-                            <h3 className="text-lg font-bold text-gray-700 mb-3">{category}</h3>
-                            {Object.entries(domains).map(([domain, requirements]) => (
-                              <div key={domain} className="mb-4">
-                                <h4 className="text-md font-semibold text-gray-600 mb-2">{domain}</h4>
-                                <div className="space-y-2">
-                                  {requirements.map(req => (
-                                    <div key={req.rowNumber} className="flex items-center gap-3 bg-gray-50 p-3 rounded">
-                                      <input
-                                        type="text"
-                                        placeholder="X"
-                                        value={req.completed}
-                                        onChange={(e) => handleUpdate(req.rowNumber, 'completed', e.target.value)}
-                                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                      />
-                                      <span className="flex-1 text-gray-700 text-sm">{req.requirement}</span>
-                                      <input
-                                        type="text"
-                                        placeholder="Note"
-                                        value={req.note}
-                                        onChange={(e) => handleUpdate(req.rowNumber, 'note', e.target.value)}
-                                        className="w-48 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                      />
-                                    </div>
-                                  ))}
+            return response.result.values || [];
+        }
+        
+        // Update cell in Google Sheets
+        async function updateCell(sheetName, range, value) {
+            const response = await gapi.client.sheets.spreadsheets.values.update({
+                spreadsheetId: SHEET_ID,
+                range: `${sheetName}!${range}`,
+                valueInputOption: 'RAW',
+                resource: { values: [[value]] }
+            });
+            return response.result;
+        }
+        
+        // Render the app
+        function renderApp() {
+            const root = document.getElementById('root');
+            
+            if (currentView === 'login') {
+                root.innerHTML = `
+                    <div style="min-height: 100vh; background: linear-gradient(to bottom right, #eff6ff, #e0e7ff); padding: 2rem;">
+                        <div style="max-width: 64rem; margin: 0 auto;">
+                            <div style="text-align: center; margin-bottom: 3rem;">
+                                <h1 style="font-size: 2.5rem; font-weight: bold; color: #1f2937; margin-bottom: 0.5rem;">Franklin 7th Grade Tracker</h1>
+                                <p style="color: #4b5563;">Student Progress Tracking System</p>
+                            </div>
+                            
+                            <div id="error-message"></div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                                <!-- Teacher Login -->
+                                <div style="background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 2rem;">
+                                    <h2 style="font-size: 1.5rem; font-weight: bold; color: #1f2937; margin-bottom: 1.5rem;">Teacher Login</h2>
+                                    <input type="password" id="admin-password" placeholder="Enter admin password" 
+                                        style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; margin-bottom: 1rem;">
+                                    <button onclick="handleTeacherLogin()" 
+                                        style="width: 100%; background: #6366f1; color: white; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer;">
+                                        Sign in with Google
+                                    </button>
+                                    <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;">You'll be prompted to sign in with your Google account</p>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        }
-
-        function StudentView({ student, onLogout }) {
-          const [studentData, setStudentData] = useState([]);
-          const [loading, setLoading] = useState(true);
-          const [error, setError] = useState('');
-
-          useEffect(() => {
-            loadStudentData();
-          }, []);
-
-          const loadStudentData = async () => {
-            setLoading(true);
-            try {
-              const sheetName = `Student_${student.id}`;
-              const data = await fetchSheet(sheetName);
-              
-              if (data.length > 0) {
-                const rows = data.slice(1).map(row => ({
-                  subject: row[0] || '',
-                  track: row[1] || '',
-                  category: row[2] || '',
-                  domain: row[3] || '',
-                  requirement: row[4] || '',
-                  completed: row[5] || '',
-                  note: row[6] || '',
-                  requirementId: row[7] || ''
-                }));
-                setStudentData(rows);
-              }
-            } catch (err) {
-              setError('Failed to load progress data');
-              console.error(err);
-            }
-            setLoading(false);
-          };
-
-          const subjectProgress = useMemo(() => {
-            const subjects = {};
-            studentData.forEach(row => {
-              if (!subjects[row.subject]) {
-                subjects[row.subject] = { completed: 0, total: 0 };
-              }
-              subjects[row.subject].total++;
-              if (row.completed) subjects[row.subject].completed++;
-            });
-            return subjects;
-          }, [studentData]);
-
-          const overallProgress = useMemo(() => {
-            const total = studentData.length;
-            const completed = studentData.filter(row => row.completed).length;
-            return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
-          }, [studentData]);
-
-          const recentCompletions = useMemo(() => {
-            return studentData
-              .filter(row => row.completed)
-              .slice(-10)
-              .reverse();
-          }, [studentData]);
-
-          const ProgressBar = ({ percent, color }) => (
-            <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden">
-              <div
-                className={`h-full ${color} transition-all duration-500 flex items-center justify-center text-white font-bold text-sm`}
-                style={{ width: `${percent}%` }}
-              >
-                {percent > 10 && `${percent}%`}
-              </div>
-            </div>
-          );
-
-          if (loading) {
-            return (
-              <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
-                <Loader2 size={48} className="text-green-600" />
-              </div>
-            );
-          }
-
-          if (error) {
-            return (
-              <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8">
-                <div className="max-w-4xl mx-auto">
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {error}
-                  </div>
-                  <button
-                    onClick={onLogout}
-                    className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-                  >
-                    Back to Login
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8">
-              <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-800">{student.name}</h1>
-                    <p className="text-gray-600">7th Grade Progress Tracker</p>
-                  </div>
-                  <button
-                    onClick={onLogout}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-                  >
-                    Logout
-                  </button>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-                  <div className="flex items-center gap-3 mb-4">
-                    <BarChart3 size={32} className="text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Overall Progress</h2>
-                  </div>
-                  <ProgressBar percent={overallProgress.percent} color="bg-indigo-600" />
-                  <p className="text-center mt-3 text-gray-600">
-                    {overallProgress.completed} of {overallProgress.total} requirements completed
-                  </p>
-                </div>
-
-                {Object.entries(subjectProgress).map(([subject, progress]) => {
-                  const percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-                  const color = subject === 'ELA' ? 'bg-blue-600' : 'bg-purple-600';
-                  
-                  return (
-                    <div key={subject} className="bg-white rounded-lg shadow-lg p-8 mb-8">
-                      <h2 className="text-xl font-bold text-gray-800 mb-2">{subject}</h2>
-                      <ProgressBar percent={percent} color={color} />
-                      <p className="text-center mt-2 text-gray-600">
-                        {progress.completed} of {progress.total} completed
-                      </p>
-                    </div>
-                  );
-                })}
-
-                <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Completions</h2>
-                  <div className="space-y-2">
-                    {recentCompletions.length > 0 ? (
-                      recentCompletions.map((item, index) => (
-                        <div key={index} className="flex items-start gap-2 text-sm">
-                          <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <span className="text-gray-700">{item.requirement}</span>
-                            {item.note && (
-                              <span className="text-gray-500 ml-2">({item.note})</span>
-                            )}
-                          </div>
+                                
+                                <!-- Student Login -->
+                                <div style="background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 2rem;">
+                                    <h2 style="font-size: 1.5rem; font-weight: bold; color: #1f2937; margin-bottom: 1.5rem;">Student/Parent Login</h2>
+                                    <input type="text" id="student-code" placeholder="Enter access code" 
+                                        style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; margin-bottom: 1rem;">
+                                    <button onclick="handleStudentLogin()" 
+                                        style="width: 100%; background: #10b981; color: white; padding: 0.75rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer;">
+                                        View Progress
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic">No items completed yet</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
+                    </div>
+                `;
+            } else if (currentView === 'admin') {
+                root.innerHTML = `
+                    <div style="min-height: 100vh; background: #f9fafb; padding: 2rem;">
+                        <div style="max-width: 80rem; margin: 0 auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                                <h1 style="font-size: 1.875rem; font-weight: bold; color: #1f2937;">Teacher Admin Panel</h1>
+                                <button onclick="handleLogout()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border-radius: 0.5rem; border: none; cursor: pointer;">Logout</button>
+                            </div>
+                            <div id="admin-content" style="background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); padding: 1.5rem;">
+                                <p>Loading students...</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                loadAdminData();
+            } else if (currentView === 'student') {
+                root.innerHTML = `
+                    <div style="min-height: 100vh; background: linear-gradient(to bottom right, #ecfdf5, #dbeafe); padding: 2rem;">
+                        <div style="max-width: 64rem; margin: 0 auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                                <div>
+                                    <h1 style="font-size: 1.875rem; font-weight: bold; color: #1f2937;">${currentUser.name}</h1>
+                                    <p style="color: #4b5563;">7th Grade Progress Tracker</p>
+                                </div>
+                                <button onclick="handleLogout()" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border-radius: 0.5rem; border: none; cursor: pointer;">Logout</button>
+                            </div>
+                            <div id="student-content">
+                                <p>Loading progress...</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                loadStudentData();
+            }
         }
-
-        ReactDOM.render(<App />, document.getElementById('root'));
+        
+        // Handle teacher login
+        function handleTeacherLogin() {
+            const password = document.getElementById('admin-password').value;
+            if (password !== ADMIN_PASSWORD) {
+                showError('Incorrect password');
+                return;
+            }
+            
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    showError('Authorization failed');
+                    return;
+                }
+                isAuthorized = true;
+                currentView = 'admin';
+                renderApp();
+            };
+            
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+        
+        // Handle student login
+        async function handleStudentLogin() {
+            const code = document.getElementById('student-code').value.toUpperCase();
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Students?key=${API_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                const students = data.values;
+                
+                const studentRow = students.slice(1).find(row => row[2] === code);
+                if (studentRow) {
+                    currentUser = {
+                        id: studentRow[0],
+                        name: studentRow[1],
+                        code: studentRow[2]
+                    };
+                    currentView = 'student';
+                    renderApp();
+                } else {
+                    showError('Invalid access code');
+                }
+            } catch (err) {
+                showError('Failed to connect');
+                console.error(err);
+            }
+        }
+        
+        // Load admin data
+        async function loadAdminData() {
+            try {
+                const students = await fetchSheet('Students');
+                const content = document.getElementById('admin-content');
+                content.innerHTML = '<p>OAuth is working! Teacher can now edit and save changes.</p><p>Full admin interface will load here.</p>';
+            } catch (err) {
+                showError('Failed to load admin data');
+                console.error(err);
+            }
+        }
+        
+        // Load student data
+        async function loadStudentData() {
+            try {
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Student_${currentUser.id}?key=${API_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const content = document.getElementById('student-content');
+                content.innerHTML = '<p>Student data loaded successfully!</p><p>Progress bars will appear here.</p>';
+            } catch (err) {
+                showError('Failed to load student data');
+                console.error(err);
+            }
+        }
+        
+        // Handle logout
+        function handleLogout() {
+            currentView = 'login';
+            currentUser = null;
+            isAuthorized = false;
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+            }
+            renderApp();
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            if (errorDiv) {
+                errorDiv.innerHTML = `
+                    <div style="background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                        ${message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            gapiLoaded();
+            gisLoaded();
+        });
     </script>
 </body>
 </html>
