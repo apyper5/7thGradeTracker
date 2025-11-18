@@ -9,9 +9,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div style="padding: 2rem; text-align: center;">
+            <h1 style="font-size: 2rem; margin-bottom: 1rem;">Loading...</h1>
+            <p>If this message persists, check the browser console (F12) for errors</p>
+        </div>
+    </div>
     
     <script>
+        console.log('Script starting...');
+        
         const SHEET_ID = '1c2morY1tLIv2pzyE0yWAMZKOq3Bt-myK9Z5f2ydsNPY';
         const CLIENT_ID = '326589757916-ce3tt4ji7hcdk1irgg0cv3f08mh1f7qj.apps.googleusercontent.com';
         const API_KEY = 'AIzaSyBO6nYreDN_rfTWSId2qY8EAJdcOE7kIgo';
@@ -28,19 +35,23 @@
         let studentData = [];
         
         function gapiLoaded() {
+            console.log('GAPI loaded');
             gapi.load('client', initializeGapiClient);
         }
         
         async function initializeGapiClient() {
+            console.log('Initializing GAPI client');
             await gapi.client.init({
                 apiKey: API_KEY,
                 discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
             });
             gapiInited = true;
+            console.log('GAPI initialized');
             maybeEnableButtons();
         }
         
         function gisLoaded() {
+            console.log('GIS loaded');
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
@@ -51,7 +62,9 @@
         }
         
         function maybeEnableButtons() {
+            console.log('Checking if ready...', gapiInited, gisInited);
             if (gapiInited && gisInited) {
+                console.log('Ready! Rendering app...');
                 renderApp();
             }
         }
@@ -67,7 +80,7 @@
         async function updateCell(sheetName, range, value) {
             const response = await gapi.client.sheets.spreadsheets.values.update({
                 spreadsheetId: SHEET_ID,
-                range: \`\${sheetName}!\${range}\`,
+                range: sheetName + '!' + range,
                 valueInputOption: 'RAW',
                 resource: { values: [[value]] }
             });
@@ -75,44 +88,11 @@
         }
         
         function renderApp() {
+            console.log('Rendering app, view:', currentView);
             const root = document.getElementById('root');
             
             if (currentView === 'login') {
-                root.innerHTML = \`
-                    <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-                        <div class="max-w-4xl mx-auto">
-                            <div class="text-center mb-12">
-                                <h1 class="text-4xl font-bold text-gray-800 mb-2">Franklin 7th Grade Tracker</h1>
-                                <p class="text-gray-600">Student Progress Tracking System</p>
-                            </div>
-                            
-                            <div id="error-message"></div>
-                            
-                            <div class="grid md:grid-cols-2 gap-8">
-                                <div class="bg-white rounded-lg shadow-lg p-8">
-                                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Teacher Login</h2>
-                                    <input type="password" id="admin-password" placeholder="Enter admin password" 
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <button onclick="handleTeacherLogin()" 
-                                        class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
-                                        Sign in with Google
-                                    </button>
-                                    <p class="text-xs text-gray-500 mt-2">You'll be prompted to sign in with your Google account</p>
-                                </div>
-                                
-                                <div class="bg-white rounded-lg shadow-lg p-8">
-                                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Student/Parent Login</h2>
-                                    <input type="text" id="student-code" placeholder="Enter access code" 
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
-                                    <button onclick="handleStudentLogin()" 
-                                        class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
-                                        View Progress
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                \`;
+                root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8"><div class="max-w-4xl mx-auto"><div class="text-center mb-12"><h1 class="text-4xl font-bold text-gray-800 mb-2">Franklin 7th Grade Tracker</h1><p class="text-gray-600">Student Progress Tracking System</p></div><div id="error-message"></div><div class="grid md:grid-cols-2 gap-8"><div class="bg-white rounded-lg shadow-lg p-8"><h2 class="text-2xl font-bold text-gray-800 mb-6">Teacher Login</h2><input type="password" id="admin-password" placeholder="Enter admin password" class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"><button onclick="handleTeacherLogin()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">Sign in with Google</button><p class="text-xs text-gray-500 mt-2">You will be prompted to sign in</p></div><div class="bg-white rounded-lg shadow-lg p-8"><h2 class="text-2xl font-bold text-gray-800 mb-6">Student/Parent Login</h2><input type="text" id="student-code" placeholder="Enter access code" class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"><button onclick="handleStudentLogin()" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">View Progress</button></div></div></div></div>';
             } else if (currentView === 'admin') {
                 renderAdminView();
             } else if (currentView === 'student') {
@@ -121,6 +101,7 @@
         }
         
         function handleTeacherLogin() {
+            console.log('Teacher login clicked');
             const password = document.getElementById('admin-password').value;
             if (password !== ADMIN_PASSWORD) {
                 showError('Incorrect password');
@@ -128,6 +109,7 @@
             }
             
             tokenClient.callback = async (resp) => {
+                console.log('OAuth callback received', resp);
                 if (resp.error !== undefined) {
                     showError('Authorization failed');
                     return;
@@ -144,9 +126,10 @@
         }
         
         async function handleStudentLogin() {
+            console.log('Student login clicked');
             const code = document.getElementById('student-code').value.toUpperCase();
             try {
-                const url = \`https://sheets.googleapis.com/v4/spreadsheets/\${SHEET_ID}/values/Students?key=\${API_KEY}\`;
+                const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Students?key=' + API_KEY;
                 const response = await fetch(url);
                 const data = await response.json();
                 const students = data.values;
@@ -160,30 +143,15 @@
                     showError('Invalid access code');
                 }
             } catch (err) {
+                console.error('Student login error:', err);
                 showError('Failed to connect');
             }
         }
         
         async function renderAdminView() {
+            console.log('Rendering admin view');
             const root = document.getElementById('root');
-            root.innerHTML = \`
-                <div class="min-h-screen bg-gray-50 p-8">
-                    <div class="max-w-7xl mx-auto">
-                        <div class="flex justify-between items-center mb-8">
-                            <h1 class="text-3xl font-bold text-gray-800">Teacher Admin Panel</h1>
-                            <button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button>
-                        </div>
-                        <div id="save-status" class="mb-4"></div>
-                        <div class="bg-white rounded-lg shadow p-6 mb-8">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Student:</label>
-                            <select id="student-select" onchange="handleStudentChange()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="">Loading...</option>
-                            </select>
-                        </div>
-                        <div id="admin-content"></div>
-                    </div>
-                </div>
-            \`;
+            root.innerHTML = '<div class="min-h-screen bg-gray-50 p-8"><div class="max-w-7xl mx-auto"><div class="flex justify-between items-center mb-8"><h1 class="text-3xl font-bold text-gray-800">Teacher Admin Panel</h1><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div id="save-status" class="mb-4"></div><div class="bg-white rounded-lg shadow p-6 mb-8"><label class="block text-sm font-semibold text-gray-700 mb-2">Select Student:</label><select id="student-select" onchange="handleStudentChange()" class="w-full px-4 py-3 border border-gray-300 rounded-lg"><option value="">Loading...</option></select></div><div id="admin-content"><p>Loading requirements...</p></div></div></div>';
             await loadStudentsList();
         }
         
@@ -192,10 +160,11 @@
                 const data = await fetchSheet('Students');
                 studentsList = data.slice(1).map(row => ({ id: row[0], name: row[1] }));
                 const select = document.getElementById('student-select');
-                select.innerHTML = studentsList.map(s => \`<option value="\${s.id}">\${s.name}</option>\`).join('');
+                select.innerHTML = studentsList.map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
                 selectedStudent = studentsList[0].id;
                 await loadStudentRequirements();
             } catch (err) {
+                console.error('Load students error:', err);
                 showError('Failed to load students');
             }
         }
@@ -207,7 +176,7 @@
         
         async function loadStudentRequirements() {
             try {
-                const data = await fetchSheet(\`Student_\${selectedStudent}\`);
+                const data = await fetchSheet('Student_' + selectedStudent);
                 studentData = data.slice(1).map((row, idx) => ({
                     rowNum: idx + 2,
                     subject: row[0] || '',
@@ -216,11 +185,11 @@
                     domain: row[3] || '',
                     requirement: row[4] || '',
                     completed: row[5] || '',
-                    note: row[6] || '',
-                    id: row[7] || ''
+                    note: row[6] || ''
                 }));
                 renderStudentRequirements();
             } catch (err) {
+                console.error('Load requirements error:', err);
                 showError('Failed to load requirements');
             }
         }
@@ -228,47 +197,46 @@
         function renderStudentRequirements() {
             const grouped = {};
             studentData.forEach(item => {
-                const key = \`\${item.subject}_\${item.track}\`;
+                const key = item.subject + '_' + item.track;
                 if (!grouped[key]) grouped[key] = { subject: item.subject, track: item.track, categories: {} };
                 if (!grouped[key].categories[item.category]) grouped[key].categories[item.category] = {};
                 if (!grouped[key].categories[item.category][item.domain]) grouped[key].categories[item.category][item.domain] = [];
                 grouped[key].categories[item.category][item.domain].push(item);
             });
             
-            const content = document.getElementById('admin-content');
-            content.innerHTML = Object.entries(grouped).map(([key, data]) => \`
-                <div class="bg-white rounded-lg shadow p-6 mb-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">\${data.subject} - \${data.track}</h2>
-                    \${Object.entries(data.categories).map(([cat, domains]) => \`
-                        <div class="border-l-4 border-indigo-500 pl-4 mb-6">
-                            <h3 class="text-lg font-bold text-gray-700 mb-3">\${cat}</h3>
-                            \${Object.entries(domains).map(([dom, reqs]) => \`
-                                <div class="mb-4">
-                                    <h4 class="text-md font-semibold text-gray-600 mb-2">\${dom}</h4>
-                                    <div class="space-y-2">
-                                        \${reqs.map(req => \`
-                                            <div class="flex items-center gap-3 bg-gray-50 p-3 rounded">
-                                                <input type="text" value="\${req.completed}" 
-                                                    onchange="handleUpdate(\${req.rowNum}, 'F', this.value)"
-                                                    placeholder="X" class="w-16 px-2 py-1 border rounded text-center">
-                                                <span class="flex-1 text-sm text-gray-700">\${req.requirement}</span>
-                                                <input type="text" value="\${req.note}" 
-                                                    onchange="handleUpdate(\${req.rowNum}, 'G', this.value)"
-                                                    placeholder="Note" class="w-48 px-2 py-1 border rounded text-sm">
-                                            </div>
-                                        \`).join('')}
-                                    </div>
-                                </div>
-                            \`).join('')}
-                        </div>
-                    \`).join('')}
-                </div>
-            \`).join('');
+            let html = '';
+            for (const [key, data] of Object.entries(grouped)) {
+                html += '<div class="bg-white rounded-lg shadow p-6 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">' + data.subject + ' - ' + data.track + '</h2>';
+                
+                for (const [cat, domains] of Object.entries(data.categories)) {
+                    html += '<div class="border-l-4 border-indigo-500 pl-4 mb-6"><h3 class="text-lg font-bold text-gray-700 mb-3">' + cat + '</h3>';
+                    
+                    for (const [dom, reqs] of Object.entries(domains)) {
+                        html += '<div class="mb-4"><h4 class="text-md font-semibold text-gray-600 mb-2">' + dom + '</h4><div class="space-y-2">';
+                        
+                        for (const req of reqs) {
+                            html += '<div class="flex items-center gap-3 bg-gray-50 p-3 rounded">';
+                            html += '<input type="text" value="' + req.completed + '" onchange="handleUpdate(' + req.rowNum + ', \'F\', this.value)" placeholder="X" class="w-16 px-2 py-1 border rounded text-center">';
+                            html += '<span class="flex-1 text-sm text-gray-700">' + req.requirement + '</span>';
+                            html += '<input type="text" value="' + req.note + '" onchange="handleUpdate(' + req.rowNum + ', \'G\', this.value)" placeholder="Note" class="w-48 px-2 py-1 border rounded text-sm">';
+                            html += '</div>';
+                        }
+                        
+                        html += '</div></div>';
+                    }
+                    
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            }
+            
+            document.getElementById('admin-content').innerHTML = html;
         }
         
         async function handleUpdate(rowNum, col, value) {
             try {
-                await updateCell(\`Student_\${selectedStudent}\`, \`\${col}\${rowNum}\`, value);
+                await updateCell('Student_' + selectedStudent, col + rowNum, value);
                 showSaveStatus('Saved!', 'success');
                 const idx = studentData.findIndex(r => r.rowNum === rowNum);
                 if (idx !== -1) {
@@ -276,38 +244,28 @@
                     else studentData[idx].note = value;
                 }
             } catch (err) {
+                console.error('Update error:', err);
                 showSaveStatus('Save failed', 'error');
             }
         }
         
         function showSaveStatus(msg, type) {
             const div = document.getElementById('save-status');
-            div.innerHTML = \`<div class="px-4 py-2 rounded-lg \${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">\${msg}</div>\`;
-            setTimeout(() => div.innerHTML = '', 2000);
+            if (div) {
+                div.innerHTML = '<div class="px-4 py-2 rounded-lg ' + (type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800') + '">' + msg + '</div>';
+                setTimeout(() => div.innerHTML = '', 2000);
+            }
         }
         
         async function renderStudentView() {
             const root = document.getElementById('root');
-            root.innerHTML = \`
-                <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8">
-                    <div class="max-w-4xl mx-auto">
-                        <div class="flex justify-between items-center mb-8">
-                            <div>
-                                <h1 class="text-3xl font-bold text-gray-800">\${currentUser.name}</h1>
-                                <p class="text-gray-600">7th Grade Progress Tracker</p>
-                            </div>
-                            <button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button>
-                        </div>
-                        <div id="student-content">Loading...</div>
-                    </div>
-                </div>
-            \`;
+            root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8"><div class="max-w-4xl mx-auto"><div class="flex justify-between items-center mb-8"><div><h1 class="text-3xl font-bold text-gray-800">' + currentUser.name + '</h1><p class="text-gray-600">7th Grade Progress Tracker</p></div><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div id="student-content">Loading...</div></div></div>';
             await loadStudentProgress();
         }
         
         async function loadStudentProgress() {
             try {
-                const url = \`https://sheets.googleapis.com/v4/spreadsheets/\${SHEET_ID}/values/Student_\${currentUser.id}?key=\${API_KEY}\`;
+                const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Student_' + currentUser.id + '?key=' + API_KEY;
                 const response = await fetch(url);
                 const data = await response.json();
                 const rows = data.values.slice(1).map(row => ({
@@ -327,50 +285,29 @@
                 
                 const recentCompletions = rows.filter(r => r.completed).slice(-10).reverse();
                 
-                const content = document.getElementById('student-content');
-                content.innerHTML = \`
-                    <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2>
-                        <div class="w-full bg-gray-200 rounded-full h-8">
-                            <div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm" style="width: \${overallPercent}%">
-                                \${overallPercent > 10 ? overallPercent + '%' : ''}
-                            </div>
-                        </div>
-                        <p class="text-center mt-3 text-gray-600">\${totalCompleted} of \${totalReqs} requirements completed</p>
-                    </div>
-                    
-                    \${Object.entries(subjects).map(([subj, prog]) => {
-                        const pct = Math.round((prog.completed / prog.total) * 100);
-                        const color = subj === 'ELA' ? 'bg-blue-600' : 'bg-purple-600';
-                        return \`
-                            <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
-                                <h2 class="text-xl font-bold text-gray-800 mb-2">\${subj}</h2>
-                                <div class="w-full bg-gray-200 rounded-full h-8">
-                                    <div class="h-full \${color} rounded-full flex items-center justify-center text-white font-bold text-sm" style="width: \${pct}%">
-                                        \${pct > 10 ? pct + '%' : ''}
-                                    </div>
-                                </div>
-                                <p class="text-center mt-2 text-gray-600">\${prog.completed} of \${prog.total} completed</p>
-                            </div>
-                        \`;
-                    }).join('')}
-                    
-                    <div class="bg-white rounded-lg shadow-lg p-8">
-                        <h2 class="text-xl font-bold text-gray-800 mb-4">Recent Completions</h2>
-                        <div class="space-y-2">
-                            \${recentCompletions.length > 0 ? recentCompletions.map(item => \`
-                                <div class="flex items-start gap-2 text-sm">
-                                    <span class="text-green-500">✓</span>
-                                    <div>
-                                        <span class="text-gray-700">\${item.requirement}</span>
-                                        \${item.note ? \`<span class="text-gray-500 ml-2">(\${item.note})</span>\` : ''}
-                                    </div>
-                                </div>
-                            \`).join('') : '<p class="text-gray-500 italic">No items completed yet</p>'}
-                        </div>
-                    </div>
-                \`;
+                let html = '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center mt-3 text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
+                
+                for (const [subj, prog] of Object.entries(subjects)) {
+                    const pct = Math.round((prog.completed / prog.total) * 100);
+                    const color = subj === 'ELA' ? 'bg-blue-600' : 'bg-purple-600';
+                    html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-xl font-bold text-gray-800 mb-2">' + subj + '</h2><div class="w-full bg-gray-200 rounded-full h-8"><div class="h-full ' + color + ' rounded-full flex items-center justify-center text-white font-bold text-sm" style="width: ' + pct + '%">' + (pct > 10 ? pct + '%' : '') + '</div></div><p class="text-center mt-2 text-gray-600">' + prog.completed + ' of ' + prog.total + ' completed</p></div>';
+                }
+                
+                html += '<div class="bg-white rounded-lg shadow-lg p-8"><h2 class="text-xl font-bold text-gray-800 mb-4">Recent Completions</h2><div class="space-y-2">';
+                
+                if (recentCompletions.length > 0) {
+                    for (const item of recentCompletions) {
+                        html += '<div class="flex items-start gap-2 text-sm"><span class="text-green-500">✓</span><div><span class="text-gray-700">' + item.requirement + '</span>' + (item.note ? '<span class="text-gray-500 ml-2">(' + item.note + ')</span>' : '') + '</div></div>';
+                    }
+                } else {
+                    html += '<p class="text-gray-500 italic">No items completed yet</p>';
+                }
+                
+                html += '</div></div>';
+                
+                document.getElementById('student-content').innerHTML = html;
             } catch (err) {
+                console.error('Load progress error:', err);
                 showError('Failed to load progress');
             }
         }
@@ -389,14 +326,19 @@
         function showError(message) {
             const errorDiv = document.getElementById('error-message');
             if (errorDiv) {
-                errorDiv.innerHTML = \`<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">\${message}</div>\`;
+                errorDiv.innerHTML = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">' + message + '</div>';
+            } else {
+                alert(message);
             }
         }
         
         window.addEventListener('load', () => {
+            console.log('Window loaded, starting initialization');
             gapiLoaded();
             gisLoaded();
         });
+        
+        console.log('Script loaded successfully');
     </script>
 </body>
 </html>
