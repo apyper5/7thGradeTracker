@@ -323,51 +323,116 @@
         
         async function renderStudentView() {
             const root = document.getElementById('root');
-            root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8"><div class="max-w-4xl mx-auto"><div class="flex justify-between items-center mb-8"><div><h1 class="text-3xl font-bold text-gray-800">' + currentUser.name + '</h1><p class="text-gray-600">7th Grade Progress Tracker</p></div><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div id="student-content">Loading...</div></div></div>';
+            root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8"><div class="max-w-5xl mx-auto"><div class="flex justify-between items-center mb-8"><div><h1 class="text-3xl font-bold text-gray-800">' + currentUser.name + '</h1><p class="text-gray-600">7th Grade Requirements</p></div><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div id="student-content">Loading...</div></div></div>';
             await loadStudentProgress();
         }
         
         async function loadStudentProgress() {
             try {
+                // Get student's track selections
+                const studentsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Students?key=' + API_KEY;
+                const studentsResponse = await fetch(studentsUrl);
+                const studentsData = await studentsResponse.json();
+                const studentRow = studentsData.values.slice(1).find(row => row[0] === currentUser.id);
+                
+                const tracks = {
+                    ELA: studentRow[3] || '',
+                    Math: studentRow[4] || '',
+                    Science: studentRow[5] || '',
+                    Utah_History: studentRow[6] || '',
+                    Arts: studentRow[7] || ''
+                };
+                
+                // Get student's progress data
                 const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + '/values/Student_' + currentUser.id + '?key=' + API_KEY;
                 const response = await fetch(url);
                 const data = await response.json();
                 const rows = data.values.slice(1).map(row => ({
-                    subject: row[0], completed: row[5], requirement: row[4], note: row[6]
+                    subject: row[0],
+                    track: row[1],
+                    category: row[2],
+                    domain: row[3],
+                    requirement: row[4],
+                    completed: row[5],
+                    note: row[6]
                 }));
                 
-                const subjects = {};
+                // Group by subject
+                const bySubject = {};
                 rows.forEach(r => {
-                    if (!subjects[r.subject]) subjects[r.subject] = { total: 0, completed: 0 };
-                    subjects[r.subject].total++;
-                    if (r.completed) subjects[r.subject].completed++;
+                    if (!bySubject[r.subject]) bySubject[r.subject] = [];
+                    bySubject[r.subject].push(r);
                 });
                 
+                // Calculate overall progress
                 const totalCompleted = rows.filter(r => r.completed).length;
                 const totalReqs = rows.length;
                 const overallPercent = Math.round((totalCompleted / totalReqs) * 100);
                 
-                const recentCompletions = rows.filter(r => r.completed).slice(-10).reverse();
+                let html = '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8 mb-2"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm transition-all duration-500" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
                 
-                let html = '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center mt-3 text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
-                
-                for (const [subj, prog] of Object.entries(subjects)) {
-                    const pct = Math.round((prog.completed / prog.total) * 100);
-                    const color = subj === 'ELA' ? 'bg-blue-600' : 'bg-purple-600';
-                    html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-xl font-bold text-gray-800 mb-2">' + subj + '</h2><div class="w-full bg-gray-200 rounded-full h-8"><div class="h-full ' + color + ' rounded-full flex items-center justify-center text-white font-bold text-sm" style="width: ' + pct + '%">' + (pct > 10 ? pct + '%' : '') + '</div></div><p class="text-center mt-2 text-gray-600">' + prog.completed + ' of ' + prog.total + ' completed</p></div>';
-                }
-                
-                html += '<div class="bg-white rounded-lg shadow-lg p-8"><h2 class="text-xl font-bold text-gray-800 mb-4">Recent Completions</h2><div class="space-y-2">';
-                
-                if (recentCompletions.length > 0) {
-                    for (const item of recentCompletions) {
-                        html += '<div class="flex items-start gap-2 text-sm"><span class="text-green-500">✓</span><div><span class="text-gray-700">' + item.requirement + '</span>' + (item.note ? '<span class="text-gray-500 ml-2">(' + item.note + ')</span>' : '') + '</div></div>';
+                // Display each subject
+                for (const [subject, items] of Object.entries(bySubject)) {
+                    const subjectCompleted = items.filter(i => i.completed).length;
+                    const subjectTotal = items.length;
+                    const subjectPercent = Math.round((subjectCompleted / subjectTotal) * 100);
+                    const trackName = items[0].track;
+                    
+                    // Color coding by subject
+                    const colors = {
+                        'ELA': { bar: 'bg-blue-600', text: 'text-blue-800', bg: 'bg-blue-50' },
+                        'Math': { bar: 'bg-purple-600', text: 'text-purple-800', bg: 'bg-purple-50' },
+                        'Science': { bar: 'bg-green-600', text: 'text-green-800', bg: 'bg-green-50' },
+                        'Utah History': { bar: 'bg-orange-600', text: 'text-orange-800', bg: 'bg-orange-50' },
+                        'Arts': { bar: 'bg-pink-600', text: 'text-pink-800', bg: 'bg-pink-50' }
+                    };
+                    const color = colors[subject] || { bar: 'bg-gray-600', text: 'text-gray-800', bg: 'bg-gray-50' };
+                    
+                    html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8">';
+                    html += '<div class="mb-4"><h2 class="text-2xl font-bold text-gray-800">' + subject + ' - ' + trackName + ' Track</h2>';
+                    html += '<div class="w-full bg-gray-200 rounded-full h-6 my-3"><div class="h-full ' + color.bar + ' rounded-full flex items-center justify-center text-white font-semibold text-xs transition-all duration-500" style="width: ' + subjectPercent + '%">' + (subjectPercent > 10 ? subjectPercent + '%' : '') + '</div></div>';
+                    html += '<p class="text-sm ' + color.text + ' font-semibold">' + subjectCompleted + ' of ' + subjectTotal + ' completed</p></div>';
+                    
+                    // Group by category
+                    const byCategory = {};
+                    items.forEach(item => {
+                        if (!byCategory[item.category]) byCategory[item.category] = {};
+                        if (!byCategory[item.category][item.domain]) byCategory[item.category][item.domain] = [];
+                        byCategory[item.category][item.domain].push(item);
+                    });
+                    
+                    // Display requirements in document structure
+                    for (const [category, domains] of Object.entries(byCategory)) {
+                        html += '<div class="mt-6 border-l-4 border-indigo-400 pl-4">';
+                        html += '<h3 class="text-lg font-bold text-gray-700 mb-3">' + category + '</h3>';
+                        
+                        for (const [domain, reqs] of Object.entries(domains)) {
+                            html += '<div class="mb-4">';
+                            html += '<h4 class="text-md font-semibold text-gray-600 mb-2">' + domain + '</h4>';
+                            html += '<ul class="space-y-2">';
+                            
+                            for (const req of reqs) {
+                                const icon = req.completed ? '<span class="text-green-600 font-bold text-lg">✓</span>' : '<span class="text-gray-400 font-bold text-lg">☐</span>';
+                                const textColor = req.completed ? 'text-gray-600' : 'text-gray-800';
+                                const bgColor = req.completed ? color.bg : 'bg-white';
+                                
+                                html += '<li class="flex items-start gap-3 p-2 rounded ' + bgColor + '">';
+                                html += icon;
+                                html += '<span class="flex-1 ' + textColor + ' text-sm">' + req.requirement;
+                                if (req.note) {
+                                    html += ' <span class="text-gray-500 italic">(' + req.note + ')</span>';
+                                }
+                                html += '</span></li>';
+                            }
+                            
+                            html += '</ul></div>';
+                        }
+                        
+                        html += '</div>';
                     }
-                } else {
-                    html += '<p class="text-gray-500 italic">No items completed yet</p>';
+                    
+                    html += '</div>';
                 }
-                
-                html += '</div></div>';
                 
                 document.getElementById('student-content').innerHTML = html;
             } catch (err) {
