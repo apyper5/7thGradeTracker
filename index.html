@@ -196,6 +196,24 @@
         }
         
         function renderStudentRequirements() {
+            // Sort studentData before grouping
+            studentData.sort((a, b) => {
+                // First by subject
+                if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
+                // Then by track
+                if (a.track !== b.track) return a.track.localeCompare(b.track);
+                // Then by category
+                if (a.category !== b.category) return a.category.localeCompare(b.category);
+                // Then by domain - extract letter if it starts with one (like "A. Integers")
+                const aDomainLetter = a.domain.match(/^([A-Z]+)\./)?.[1] || '';
+                const bDomainLetter = b.domain.match(/^([A-Z]+)\./)?.[1] || '';
+                if (aDomainLetter && bDomainLetter && aDomainLetter !== bDomainLetter) {
+                    return aDomainLetter.localeCompare(bDomainLetter);
+                }
+                // Finally by domain name
+                return a.domain.localeCompare(b.domain);
+            });
+            
             const grouped = {};
             studentData.forEach(item => {
                 const key = item.subject + '_' + item.track;
@@ -359,6 +377,19 @@
                     completed: row[5],
                     note: row[6]
                 }));
+                
+                // Sort rows before processing
+                rows.sort((a, b) => {
+                    if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
+                    if (a.track !== b.track) return a.track.localeCompare(b.track);
+                    if (a.category !== b.category) return a.category.localeCompare(b.category);
+                    const aDomainLetter = a.domain.match(/^([A-Z]+)\./)?.[1] || '';
+                    const bDomainLetter = b.domain.match(/^([A-Z]+)\./)?.[1] || '';
+                    if (aDomainLetter && bDomainLetter && aDomainLetter !== bDomainLetter) {
+                        return aDomainLetter.localeCompare(bDomainLetter);
+                    }
+                    return a.domain.localeCompare(b.domain);
+                });
                 
                 // Group by subject
                 const bySubject = {};
