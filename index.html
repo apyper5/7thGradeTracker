@@ -36,6 +36,9 @@
         let collapsedSections = {};
         let collapsedCategories = {};
         let collapsedDomains = {};
+        let studentCollapsedSubjects = {};
+        let studentCollapsedCategories = {};
+        let studentCollapsedDomains = {};
         
         function gapiLoaded() {
             console.log('GAPI loaded');
@@ -323,7 +326,7 @@
         
         async function renderStudentView() {
             const root = document.getElementById('root');
-            root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8"><div class="max-w-5xl mx-auto"><div class="flex justify-between items-center mb-8"><div><h1 class="text-3xl font-bold text-gray-800">' + currentUser.name + '</h1><p class="text-gray-600">7th Grade Requirements</p></div><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div id="student-content">Loading...</div></div></div>';
+            root.innerHTML = '<div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-8"><div class="max-w-5xl mx-auto"><div class="flex justify-between items-center mb-8"><div><h1 class="text-3xl font-bold text-gray-800">' + currentUser.name + '</h1><p class="text-gray-600">7th Grade Requirements</p></div><button onclick="handleLogout()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Logout</button></div><div class="mb-4 flex gap-2"><button onclick="collapseAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Collapse All</button><button onclick="expandAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Expand All</button></div><div id="student-content">Loading...</div></div></div>';
             await loadStudentProgress();
         }
         
@@ -388,10 +391,20 @@
                     };
                     const color = colors[subject] || { bar: 'bg-gray-600', text: 'text-gray-800', bg: 'bg-gray-50' };
                     
+                    const subjectId = 'student_subj_' + subject.replace(/\s+/g, '_');
+                    const isSubjectCollapsed = studentCollapsedSubjects[subjectId];
+                    
                     html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8">';
-                    html += '<div class="mb-4"><h2 class="text-2xl font-bold text-gray-800">' + subject + ' - ' + trackName + ' Track</h2>';
+                    html += '<div class="cursor-pointer" onclick="toggleStudentSubject(\'' + subjectId + '\')">';
+                    html += '<div class="flex justify-between items-center mb-4">';
+                    html += '<h2 class="text-2xl font-bold text-gray-800">' + subject + ' - ' + trackName + ' Track</h2>';
+                    html += '<span class="text-2xl text-gray-600">' + (isSubjectCollapsed ? '▼' : '▲') + '</span>';
+                    html += '</div>';
                     html += '<div class="w-full bg-gray-200 rounded-full h-6 my-3"><div class="h-full ' + color.bar + ' rounded-full flex items-center justify-center text-white font-semibold text-xs transition-all duration-500" style="width: ' + subjectPercent + '%">' + (subjectPercent > 10 ? subjectPercent + '%' : '') + '</div></div>';
-                    html += '<p class="text-sm ' + color.text + ' font-semibold">' + subjectCompleted + ' of ' + subjectTotal + ' completed</p></div>';
+                    html += '<p class="text-sm ' + color.text + ' font-semibold">' + subjectCompleted + ' of ' + subjectTotal + ' completed</p>';
+                    html += '</div>';
+                    
+                    html += '<div id="' + subjectId + '" style="display: ' + (isSubjectCollapsed ? 'none' : 'block') + '">';
                     
                     // Group by category
                     const byCategory = {};
@@ -403,13 +416,27 @@
                     
                     // Display requirements in document structure
                     for (const [category, domains] of Object.entries(byCategory)) {
+                        const catId = subjectId + '_cat_' + category.replace(/\s+/g, '_').replace(/\./g, '_');
+                        const isCatCollapsed = studentCollapsedCategories[catId];
+                        
                         html += '<div class="mt-6 border-l-4 border-indigo-400 pl-4">';
-                        html += '<h3 class="text-lg font-bold text-gray-700 mb-3">' + category + '</h3>';
+                        html += '<div class="flex justify-between items-center cursor-pointer" onclick="toggleStudentCategory(\'' + catId + '\')">';
+                        html += '<h3 class="text-lg font-bold text-gray-700">' + category + '</h3>';
+                        html += '<span class="text-lg text-gray-600">' + (isCatCollapsed ? '▼' : '▲') + '</span>';
+                        html += '</div>';
+                        html += '<div id="' + catId + '" style="display: ' + (isCatCollapsed ? 'none' : 'block') + '" class="mt-3">';
                         
                         for (const [domain, reqs] of Object.entries(domains)) {
+                            const domId = catId + '_dom_' + domain.replace(/\s+/g, '_').replace(/\./g, '_');
+                            const isDomCollapsed = studentCollapsedDomains[domId];
+                            
                             html += '<div class="mb-4">';
-                            html += '<h4 class="text-md font-semibold text-gray-600 mb-2">' + domain + '</h4>';
-                            html += '<ul class="space-y-2">';
+                            html += '<div class="flex justify-between items-center cursor-pointer" onclick="toggleStudentDomain(\'' + domId + '\')">';
+                            html += '<h4 class="text-md font-semibold text-gray-600">' + domain + '</h4>';
+                            html += '<span class="text-sm text-gray-600">' + (isDomCollapsed ? '▼' : '▲') + '</span>';
+                            html += '</div>';
+                            html += '<div id="' + domId + '" style="display: ' + (isDomCollapsed ? 'none' : 'block') + '">';
+                            html += '<ul class="space-y-2 mt-2">';
                             
                             for (const req of reqs) {
                                 const icon = req.completed ? '<span class="text-green-600 font-bold text-lg">✓</span>' : '<span class="text-gray-400 font-bold text-lg">☐</span>';
@@ -425,13 +452,13 @@
                                 html += '</span></li>';
                             }
                             
-                            html += '</ul></div>';
+                            html += '</ul></div></div>';
                         }
                         
-                        html += '</div>';
+                        html += '</div></div>';
                     }
                     
-                    html += '</div>';
+                    html += '</div></div>';
                 }
                 
                 document.getElementById('student-content').innerHTML = html;
@@ -439,6 +466,38 @@
                 console.error('Load progress error:', err);
                 showError('Failed to load progress');
             }
+        }
+        
+        function toggleStudentSubject(subjectId) {
+            studentCollapsedSubjects[subjectId] = !studentCollapsedSubjects[subjectId];
+            loadStudentProgress();
+        }
+        
+        function toggleStudentCategory(catId) {
+            studentCollapsedCategories[catId] = !studentCollapsedCategories[catId];
+            loadStudentProgress();
+        }
+        
+        function toggleStudentDomain(domId) {
+            studentCollapsedDomains[domId] = !studentCollapsedDomains[domId];
+            loadStudentProgress();
+        }
+        
+        function collapseAllStudent() {
+            const subjects = document.querySelectorAll('[id^="student_subj_"]');
+            subjects.forEach(s => {
+                if (!s.id.includes('_cat_') && !s.id.includes('_dom_')) {
+                    studentCollapsedSubjects[s.id] = true;
+                }
+            });
+            loadStudentProgress();
+        }
+        
+        function expandAllStudent() {
+            studentCollapsedSubjects = {};
+            studentCollapsedCategories = {};
+            studentCollapsedDomains = {};
+            loadStudentProgress();
         }
         
         function handleLogout() {
