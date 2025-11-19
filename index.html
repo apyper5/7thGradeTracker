@@ -190,10 +190,25 @@
         
         async function loadStudentsList() {
             try {
-                const data = await callAppsScript({ action: 'getStudentsList' }, 'POST');
+                const response = await fetch(APPS_SCRIPT_URL + '?action=getStudentsList');
+                const text = await response.text();
+                
+                // Try to parse as JSON
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    showError('Server returned invalid JSON: ' + text.substring(0, 100));
+                    return;
+                }
                 
                 if (data.error) {
-                    showError(data.error);
+                    showError('Error from server: ' + data.error);
+                    return;
+                }
+                
+                if (!data.success || !data.students) {
+                    showError('Invalid response from server: ' + JSON.stringify(data));
                     return;
                 }
                 
@@ -203,8 +218,7 @@
                 selectedStudent = studentsList[0].id;
                 await loadStudentRequirements();
             } catch (err) {
-                console.error('Load students error:', err);
-                showError('Failed to load students');
+                showError('Failed to load students: ' + err.message);
             }
         }
         
