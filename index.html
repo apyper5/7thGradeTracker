@@ -190,7 +190,6 @@
         
         async function loadStudentsList() {
             try {
-                const result = await callAppsScript({}, 'POST');
                 const data = await callAppsScript({ action: 'getStudentsList' }, 'POST');
                 
                 if (data.error) {
