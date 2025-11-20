@@ -367,17 +367,17 @@
                     row: row,
                     col: col,
                     value: value
-                }, 'POST');
+                }, 'GET');
                 
                 if (result.error) {
-                    statusDiv.innerHTML = '<div class="bg-red-100 text-red-700 px-4 py-2 rounded">Failed to save</div>';
+                    statusDiv.innerHTML = '<div class="bg-red-100 text-red-700 px-4 py-2 rounded">Failed: ' + result.error + '</div>';
                 } else {
                     statusDiv.innerHTML = '<div class="bg-green-100 text-green-700 px-4 py-2 rounded">Saved ✓</div>';
                     setTimeout(() => statusDiv.innerHTML = '', 2000);
                 }
             } catch (err) {
                 console.error('Update error:', err);
-                document.getElementById('save-status').innerHTML = '<div class="bg-red-100 text-red-700 px-4 py-2 rounded">Failed to save</div>';
+                document.getElementById('save-status').innerHTML = '<div class="bg-red-100 text-red-700 px-4 py-2 rounded">Failed: ' + err.message + '</div>';
             }
         }
         
