@@ -253,11 +253,19 @@
                 if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
                 if (a.track !== b.track) return a.track.localeCompare(b.track);
                 if (a.category !== b.category) return a.category.localeCompare(b.category, undefined, {numeric: true, sensitivity: 'base'});
+                
+                // Extract letter prefix from domain (e.g., "A.", "AA.", "B.", "BB.")
                 const aDomainLetter = a.domain.match(/^([A-Z]+)\./)?.[1] || '';
                 const bDomainLetter = b.domain.match(/^([A-Z]+)\./)?.[1] || '';
+                
                 if (aDomainLetter && bDomainLetter && aDomainLetter !== bDomainLetter) {
+                    // Sort by length first (A before AA), then alphabetically
+                    if (aDomainLetter.length !== bDomainLetter.length) {
+                        return aDomainLetter.length - bDomainLetter.length;
+                    }
                     return aDomainLetter.localeCompare(bDomainLetter);
                 }
+                
                 return a.domain.localeCompare(b.domain, undefined, {numeric: true, sensitivity: 'base'});
             });
             
@@ -413,11 +421,19 @@
                     if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
                     if (a.track !== b.track) return a.track.localeCompare(b.track);
                     if (a.category !== b.category) return a.category.localeCompare(b.category, undefined, {numeric: true, sensitivity: 'base'});
+                    
+                    // Extract letter prefix from domain (e.g., "A.", "AA.", "B.", "BB.")
                     const aDomainLetter = a.domain.match(/^([A-Z]+)\./)?.[1] || '';
                     const bDomainLetter = b.domain.match(/^([A-Z]+)\./)?.[1] || '';
+                    
                     if (aDomainLetter && bDomainLetter && aDomainLetter !== bDomainLetter) {
+                        // Sort by length first (A before AA), then alphabetically
+                        if (aDomainLetter.length !== bDomainLetter.length) {
+                            return aDomainLetter.length - bDomainLetter.length;
+                        }
                         return aDomainLetter.localeCompare(bDomainLetter);
                     }
+                    
                     return a.domain.localeCompare(b.domain, undefined, {numeric: true, sensitivity: 'base'});
                 });
                 
