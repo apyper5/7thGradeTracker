@@ -493,29 +493,31 @@
         
         // Calculate actual school days remaining based on calendar
         function getSchoolDaysRemaining() {
-            // Start counting from tomorrow (since today is already in progress)
+            // Start counting from today
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Reset to midnight
             const startDate = new Date(today);
-            startDate.setDate(startDate.getDate() + 1); // Start from tomorrow
             
             const endDate = new Date('2026-05-22');
             endDate.setHours(0, 0, 0, 0);
             
             // Define all no-school date ranges and individual days
             const noSchoolDates = [
-                // Thanksgiving Break
+                // Thanksgiving Break (3 days)
                 { start: new Date('2025-11-26'), end: new Date('2025-11-28') },
-                // Winter Break  
-                { start: new Date('2025-12-22'), end: new Date('2026-01-02') },
-                // MLK Day
+                // Winter Break - Week 1 (5 days: Dec 22-26)
+                { start: new Date('2025-12-22'), end: new Date('2025-12-26') },
+                // Winter Break - Week 2 (5 days: Dec 29-31, Jan 1-2)
+                { start: new Date('2025-12-29'), end: new Date('2026-01-02') },
+                // MLK Day (1 day)
                 { start: new Date('2026-01-19'), end: new Date('2026-01-19') },
-                // Presidents Day
+                // Presidents Day (1 day)
                 { start: new Date('2026-02-16'), end: new Date('2026-02-16') },
-                // Spring Break days
+                // Spring Break (1 day)
                 { start: new Date('2026-03-09'), end: new Date('2026-03-09') },
+                // Spring Break Week (5 days)
                 { start: new Date('2026-04-06'), end: new Date('2026-04-10') },
-                // End of year break
+                // End of year break (4 days)
                 { start: new Date('2026-04-27'), end: new Date('2026-04-30') }
             ];
             
