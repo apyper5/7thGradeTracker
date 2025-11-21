@@ -266,6 +266,14 @@
                     return aDomainLetter.localeCompare(bDomainLetter);
                 }
                 
+                // If domains are the same, sort by requirement IXL number (e.g., "1.", "2.", "10.")
+                const aReqNum = a.requirement.match(/^(\d+)\./)?.[1];
+                const bReqNum = b.requirement.match(/^(\d+)\./)?.[1];
+                
+                if (aReqNum && bReqNum) {
+                    return parseInt(aReqNum) - parseInt(bReqNum);
+                }
+                
                 return a.domain.localeCompare(b.domain, undefined, {numeric: true, sensitivity: 'base'});
             });
             
@@ -432,6 +440,14 @@
                             return aDomainLetter.length - bDomainLetter.length;
                         }
                         return aDomainLetter.localeCompare(bDomainLetter);
+                    }
+                    
+                    // If domains are the same, sort by requirement IXL number (e.g., "1.", "2.", "10.")
+                    const aReqNum = a.requirement.match(/^(\d+)\./)?.[1];
+                    const bReqNum = b.requirement.match(/^(\d+)\./)?.[1];
+                    
+                    if (aReqNum && bReqNum) {
+                        return parseInt(aReqNum) - parseInt(bReqNum);
                     }
                     
                     return a.domain.localeCompare(b.domain, undefined, {numeric: true, sensitivity: 'base'});
