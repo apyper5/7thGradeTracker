@@ -493,29 +493,41 @@
         
         // Calculate actual school days remaining based on calendar
         function getSchoolDaysRemaining() {
+            // Start counting from tomorrow (since today is already in progress)
             const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset to midnight
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() + 1); // Start from tomorrow
+            
             const endDate = new Date('2026-05-22');
+            endDate.setHours(0, 0, 0, 0);
             
             // Define all no-school date ranges and individual days
             const noSchoolDates = [
                 // Thanksgiving Break
                 { start: new Date('2025-11-26'), end: new Date('2025-11-28') },
-                // Winter Break
+                // Winter Break  
                 { start: new Date('2025-12-22'), end: new Date('2026-01-02') },
                 // MLK Day
                 { start: new Date('2026-01-19'), end: new Date('2026-01-19') },
                 // Presidents Day
                 { start: new Date('2026-02-16'), end: new Date('2026-02-16') },
-                // Spring Break
+                // Spring Break days
                 { start: new Date('2026-03-09'), end: new Date('2026-03-09') },
                 { start: new Date('2026-04-06'), end: new Date('2026-04-10') },
                 // End of year break
                 { start: new Date('2026-04-27'), end: new Date('2026-04-30') }
             ];
             
+            // Normalize all no-school dates to midnight
+            noSchoolDates.forEach(range => {
+                range.start.setHours(0, 0, 0, 0);
+                range.end.setHours(0, 0, 0, 0);
+            });
+            
             // Count school days
             let schoolDays = 0;
-            let currentDate = new Date(today);
+            let currentDate = new Date(startDate);
             
             while (currentDate <= endDate) {
                 const dayOfWeek = currentDate.getDay();
@@ -523,8 +535,9 @@
                 
                 // Check if current date is a no-school day
                 let isNoSchool = false;
+                const currentTime = currentDate.getTime();
                 for (const range of noSchoolDates) {
-                    if (currentDate >= range.start && currentDate <= range.end) {
+                    if (currentTime >= range.start.getTime() && currentTime <= range.end.getTime()) {
                         isNoSchool = true;
                         break;
                     }
