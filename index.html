@@ -307,7 +307,7 @@
                 
                 // Read from cell I1
                 const daysRemaining = studentData.schoolDaysRemaining || 105;
-                const weeksRemaining = (daysRemaining / 5).toFixed(1);
+                const weeksRemaining = daysRemaining / 5;
                 
                 const elaPerDay = elaRemaining > 0 ? (elaRemaining / daysRemaining).toFixed(1) : 0;
                 const elaPerWeek = elaRemaining > 0 ? (elaRemaining / weeksRemaining).toFixed(1) : 0;
@@ -620,7 +620,7 @@
                     
                     // Read from cell I1 via currentUser
                     const daysRemaining = currentUser.schoolDaysRemaining || 105;
-                    const weeksRemaining = (daysRemaining / 5).toFixed(1);
+                    const weeksRemaining = daysRemaining / 5;
                     
                     const elaPerDay = elaRemaining > 0 ? (elaRemaining / daysRemaining).toFixed(1) : 0;
                     const elaPerWeek = elaRemaining > 0 ? (elaRemaining / weeksRemaining).toFixed(1) : 0;
