@@ -293,29 +293,68 @@
             
             // Add countdown if there are IXL requirements
             if (ixlRequirements.length > 0) {
-                const ixlCompleted = ixlRequirements.filter(item => item.completed).length;
-                const ixlRemaining = ixlRequirements.length - ixlCompleted;
+                // Split by subject
+                const elaIxl = ixlRequirements.filter(item => item.subject === 'ELA');
+                const mathIxl = ixlRequirements.filter(item => item.subject === 'Math');
+                
+                const elaCompleted = elaIxl.filter(item => item.completed).length;
+                const elaRemaining = elaIxl.length - elaCompleted;
+                const mathCompleted = mathIxl.filter(item => item.completed).length;
+                const mathRemaining = mathIxl.length - mathCompleted;
+                const totalRemaining = elaRemaining + mathRemaining;
+                
                 const daysRemaining = 105; // School days until May 22, 2026
-                const skillsPerDay = (ixlRemaining / daysRemaining).toFixed(1);
-                const skillsPerWeek = (ixlRemaining / (daysRemaining / 5)).toFixed(1);
+                const weeksRemaining = daysRemaining / 5;
+                
+                const elaPerDay = elaRemaining > 0 ? (elaRemaining / daysRemaining).toFixed(1) : 0;
+                const elaPerWeek = elaRemaining > 0 ? (elaRemaining / weeksRemaining).toFixed(1) : 0;
+                const mathPerDay = mathRemaining > 0 ? (mathRemaining / daysRemaining).toFixed(1) : 0;
+                const mathPerWeek = mathRemaining > 0 ? (mathRemaining / weeksRemaining).toFixed(1) : 0;
                 
                 html += '<div class="bg-gradient-to-r from-green-500 to-teal-600 rounded-lg shadow-lg p-6 mb-8 text-white">';
                 html += '<h2 class="text-2xl font-bold mb-4">📅 IXL Countdown to May 22, 2026</h2>';
-                html += '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
+                
+                html += '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">';
                 html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
                 html += '<div class="text-4xl font-bold">' + daysRemaining + '</div>';
                 html += '<div class="text-sm">School Days Left</div>';
                 html += '</div>';
                 html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                html += '<div class="text-4xl font-bold">' + skillsPerDay + '</div>';
-                html += '<div class="text-sm">Skills Needed Per Day</div>';
+                html += '<div class="text-4xl font-bold">' + totalRemaining + '</div>';
+                html += '<div class="text-sm">Total IXL Skills Left</div>';
                 html += '</div>';
                 html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                html += '<div class="text-4xl font-bold">' + skillsPerWeek + '</div>';
-                html += '<div class="text-sm">Skills Needed Per Week</div>';
+                html += '<div class="text-4xl font-bold">' + weeksRemaining.toFixed(0) + '</div>';
+                html += '<div class="text-sm">Weeks Remaining</div>';
                 html += '</div>';
                 html += '</div>';
-                html += '<p class="text-center mt-4 text-sm">Student has <strong>' + ixlRemaining + ' IXL skills</strong> left to complete!</p>';
+                
+                // ELA and Math breakdown
+                html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                
+                // ELA Stats
+                if (elaRemaining > 0) {
+                    html += '<div class="bg-white bg-opacity-10 rounded-lg p-4">';
+                    html += '<h3 class="text-xl font-bold mb-3 text-blue-100">📚 ELA Skills</h3>';
+                    html += '<div class="space-y-2">';
+                    html += '<div class="flex justify-between"><span>Remaining:</span><strong>' + elaRemaining + ' skills</strong></div>';
+                    html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + elaPerDay + ' skills</strong></div>';
+                    html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + elaPerWeek + ' skills</strong></div>';
+                    html += '</div></div>';
+                }
+                
+                // Math Stats
+                if (mathRemaining > 0) {
+                    html += '<div class="bg-white bg-opacity-10 rounded-lg p-4">';
+                    html += '<h3 class="text-xl font-bold mb-3 text-purple-100">🔢 Math Skills</h3>';
+                    html += '<div class="space-y-2">';
+                    html += '<div class="flex justify-between"><span>Remaining:</span><strong>' + mathRemaining + ' skills</strong></div>';
+                    html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + mathPerDay + ' skills</strong></div>';
+                    html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + mathPerWeek + ' skills</strong></div>';
+                    html += '</div></div>';
+                }
+                
+                html += '</div>';
                 html += '</div>';
             }
             
@@ -566,29 +605,68 @@
                 // IXL Countdown - only show if student has IXL requirements
                 const ixlRows = rows.filter(r => r.category === 'IXL Skills' || r.domain.includes('IXL'));
                 if (ixlRows.length > 0) {
-                    const ixlCompleted = ixlRows.filter(r => r.completed).length;
-                    const ixlRemaining = ixlRows.length - ixlCompleted;
+                    // Split by subject
+                    const elaIxl = ixlRows.filter(r => r.subject === 'ELA');
+                    const mathIxl = ixlRows.filter(r => r.subject === 'Math');
+                    
+                    const elaCompleted = elaIxl.filter(r => r.completed).length;
+                    const elaRemaining = elaIxl.length - elaCompleted;
+                    const mathCompleted = mathIxl.filter(r => r.completed).length;
+                    const mathRemaining = mathIxl.length - mathCompleted;
+                    const totalRemaining = elaRemaining + mathRemaining;
+                    
                     const daysRemaining = 105; // School days until May 22, 2026
-                    const skillsPerDay = (ixlRemaining / daysRemaining).toFixed(1);
-                    const skillsPerWeek = (ixlRemaining / (daysRemaining / 5)).toFixed(1);
+                    const weeksRemaining = daysRemaining / 5;
+                    
+                    const elaPerDay = elaRemaining > 0 ? (elaRemaining / daysRemaining).toFixed(1) : 0;
+                    const elaPerWeek = elaRemaining > 0 ? (elaRemaining / weeksRemaining).toFixed(1) : 0;
+                    const mathPerDay = mathRemaining > 0 ? (mathRemaining / daysRemaining).toFixed(1) : 0;
+                    const mathPerWeek = mathRemaining > 0 ? (mathRemaining / weeksRemaining).toFixed(1) : 0;
                     
                     html += '<div class="bg-gradient-to-r from-green-500 to-teal-600 rounded-lg shadow-lg p-6 mb-8 text-white">';
                     html += '<h2 class="text-2xl font-bold mb-4">📅 IXL Countdown to May 22, 2026</h2>';
-                    html += '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
+                    
+                    html += '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">';
                     html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
                     html += '<div class="text-4xl font-bold">' + daysRemaining + '</div>';
                     html += '<div class="text-sm">School Days Left</div>';
                     html += '</div>';
                     html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                    html += '<div class="text-4xl font-bold">' + skillsPerDay + '</div>';
-                    html += '<div class="text-sm">Skills Needed Per Day</div>';
+                    html += '<div class="text-4xl font-bold">' + totalRemaining + '</div>';
+                    html += '<div class="text-sm">Total IXL Skills Left</div>';
                     html += '</div>';
                     html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                    html += '<div class="text-4xl font-bold">' + skillsPerWeek + '</div>';
-                    html += '<div class="text-sm">Skills Needed Per Week</div>';
+                    html += '<div class="text-4xl font-bold">' + weeksRemaining.toFixed(0) + '</div>';
+                    html += '<div class="text-sm">Weeks Remaining</div>';
                     html += '</div>';
                     html += '</div>';
-                    html += '<p class="text-center mt-4 text-sm">You have <strong>' + ixlRemaining + ' IXL skills</strong> left to complete!</p>';
+                    
+                    // ELA and Math breakdown
+                    html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                    
+                    // ELA Stats
+                    if (elaRemaining > 0) {
+                        html += '<div class="bg-white bg-opacity-10 rounded-lg p-4">';
+                        html += '<h3 class="text-xl font-bold mb-3 text-blue-100">📚 ELA Skills</h3>';
+                        html += '<div class="space-y-2">';
+                        html += '<div class="flex justify-between"><span>Remaining:</span><strong>' + elaRemaining + ' skills</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + elaPerDay + ' skills</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + elaPerWeek + ' skills</strong></div>';
+                        html += '</div></div>';
+                    }
+                    
+                    // Math Stats
+                    if (mathRemaining > 0) {
+                        html += '<div class="bg-white bg-opacity-10 rounded-lg p-4">';
+                        html += '<h3 class="text-xl font-bold mb-3 text-purple-100">🔢 Math Skills</h3>';
+                        html += '<div class="space-y-2">';
+                        html += '<div class="flex justify-between"><span>Remaining:</span><strong>' + mathRemaining + ' skills</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + mathPerDay + ' skills</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + mathPerWeek + ' skills</strong></div>';
+                        html += '</div></div>';
+                    }
+                    
+                    html += '</div>';
                     html += '</div>';
                 }
                 
