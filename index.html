@@ -626,21 +626,37 @@
                 // Start building HTML
                 let html = '';
                 
-                // XP & Level Section
-                html += '<div class="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg shadow-lg p-6 mb-6 text-white">';
-                html += '<div class="flex justify-between items-center mb-3">';
-                html += '<div><h2 class="text-2xl font-bold">Level ' + level + ' - ' + levelTitle + '</h2>';
-                html += '<p class="text-purple-100 text-sm">' + xp + ' XP earned • ' + (xpToNextLevel - xpInCurrentLevel) + ' XP to next level</p></div>';
-                html += '<div class="text-4xl">🎓</div></div>';
-                html += '<div class="w-full bg-purple-700 rounded-full h-4"><div class="h-full bg-yellow-400 rounded-full transition-all duration-500" style="width: ' + levelPercent + '%"></div></div>';
+                // 1. OVERALL PROGRESS (Full width at top) - COLLAPSIBLE
+                html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-6">';
+                html += '<div class="cursor-pointer" onclick="toggleSection(\'overall-progress\')">';
+                html += '<div class="flex justify-between items-center mb-4">';
+                html += '<h2 class="text-2xl font-bold text-gray-800">Overall Progress</h2>';
+                html += '<span id="overall-progress-toggle" class="text-2xl text-gray-600">▲</span>';
+                html += '</div></div>';
+                html += '<div id="overall-progress" style="display: block;">';
+                html += '<div class="w-full bg-gray-200 rounded-full h-8 mb-2">';
+                html += '<div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm transition-all duration-500" style="width: ' + overallPercent + '%">';
+                html += (overallPercent > 10 ? overallPercent + '%' : '');
+                html += '</div></div>';
+                html += '<p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p>';
+                html += '<div class="text-center mt-3">';
+                html += '<span class="text-lg font-bold text-purple-600">Level ' + level + ' - ' + levelTitle + '</span>';
+                html += '<span class="text-gray-500 mx-2">•</span>';
+                html += '<span class="text-gray-600">' + xp + ' XP earned</span>';
                 html += '</div>';
+                html += '</div></div>';
                 
-                // Theme Progress Reveal Section
+                // 2. THEME PROGRESS REVEAL (Full width) - COLLAPSIBLE
                 const studentTheme = currentUser.progressTheme || 'mountains';
                 html += '<div class="bg-white rounded-lg shadow-lg p-6 mb-6">';
+                html += '<div class="cursor-pointer" onclick="toggleSection(\'theme-reveal\')">';
                 html += '<div class="flex justify-between items-center mb-4">';
                 html += '<h2 class="text-xl font-bold text-gray-800">Your Progress Journey</h2>';
-                html += '<select id="theme-selector" onchange="handleThemeChange(this.value)" class="px-4 py-2 border rounded-lg">';
+                html += '<span id="theme-reveal-toggle" class="text-2xl text-gray-600">▲</span>';
+                html += '</div></div>';
+                html += '<div id="theme-reveal" style="display: block;">';
+                html += '<div class="mb-4">';
+                html += '<select id="theme-selector" onchange="handleThemeChange(this.value)" class="px-4 py-2 border rounded-lg w-full">';
                 html += '<option value="mountains"' + (studentTheme === 'mountains' ? ' selected' : '') + '>🏔️ Mountains</option>';
                 html += '<option value="ocean"' + (studentTheme === 'ocean' ? ' selected' : '') + '>🌊 Ocean</option>';
                 html += '<option value="space"' + (studentTheme === 'space' ? ' selected' : '') + '>🚀 Space</option>';
@@ -659,98 +675,40 @@
                 html += '<div class="theme-reveal-mask" style="--reveal-percent: ' + overallPercent + '%"></div>';
                 html += '</div>';
                 html += '<p class="text-center text-gray-600 mt-4">' + overallPercent + '% Revealed</p>';
-                html += '</div>';
+                html += '</div></div>';
                 
-                // Achievements Section
-                html += '<div class="bg-white rounded-lg shadow-lg p-6 mb-6">';
-                html += '<h2 class="text-xl font-bold text-gray-800 mb-4">Achievements (' + unlockedCount + '/' + achievements.length + ')</h2>';
-                html += '<div class="grid grid-cols-2 md:grid-cols-5 gap-4">';
+                // 3. THREE-COLUMN LAYOUT: Achievements | Requirements | IXL Countdown
+                html += '<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">';
+                
+                // LEFT SIDEBAR: Achievements (3 columns on large screens) - COLLAPSIBLE
+                html += '<div class="lg:col-span-3">';
+                html += '<div class="bg-white rounded-lg shadow-lg p-6 sticky top-6">';
+                html += '<div class="cursor-pointer" onclick="toggleSection(\'achievements\')">';
+                html += '<div class="flex justify-between items-center mb-4">';
+                html += '<div>';
+                html += '<h2 class="text-xl font-bold text-gray-800">Achievements</h2>';
+                html += '<p class="text-sm text-gray-600">' + unlockedCount + ' of ' + achievements.length + ' unlocked</p>';
+                html += '</div>';
+                html += '<span id="achievements-toggle" class="text-2xl text-gray-600">▲</span>';
+                html += '</div></div>';
+                html += '<div id="achievements" style="display: block;" class="space-y-3">';
                 achievements.forEach(ach => {
                     const unlockClass = ach.unlocked ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 border-yellow-400' : 'bg-gray-100 border-gray-300 opacity-50';
-                    html += '<div class="border-2 ' + unlockClass + ' rounded-lg p-4 text-center">';
-                    html += '<div class="text-4xl mb-2">' + ach.icon + '</div>';
-                    html += '<div class="font-bold text-sm text-gray-800">' + ach.name + '</div>';
+                    html += '<div class="border-2 ' + unlockClass + ' rounded-lg p-3 text-center">';
+                    html += '<div class="text-3xl mb-1">' + ach.icon + '</div>';
+                    html += '<div class="font-bold text-xs text-gray-800">' + ach.name + '</div>';
                     html += '<div class="text-xs text-gray-600 mt-1">' + ach.desc + '</div>';
                     if (ach.unlocked) {
-                        html += '<div class="text-xs text-green-600 font-semibold mt-2">✓ Unlocked</div>';
+                        html += '<div class="text-xs text-green-600 font-semibold mt-1">✓</div>';
                     } else {
-                        html += '<div class="text-xs text-gray-500 mt-2">🔒 Locked</div>';
+                        html += '<div class="text-xs text-gray-500 mt-1">🔒</div>';
                     }
                     html += '</div>';
                 });
-                html += '</div></div>';
+                html += '</div></div></div>';
                 
-                // Overall Progress
-                html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-8"><h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Progress</h2><div class="w-full bg-gray-200 rounded-full h-8 mb-2"><div class="h-full bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm transition-all duration-500" style="width: ' + overallPercent + '%">' + (overallPercent > 10 ? overallPercent + '%' : '') + '</div></div><p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p></div>';
-                
-                // IXL Countdown - only show if student has IXL requirements
-                const ixlRows = rows.filter(r => r.category === 'IXL Skills' || r.domain.includes('IXL'));
-                if (ixlRows.length > 0) {
-                    // Split by subject
-                    const elaIxl = ixlRows.filter(r => r.subject === 'ELA');
-                    const mathIxl = ixlRows.filter(r => r.subject === 'Math');
-                    
-                    const elaCompleted = elaIxl.filter(r => r.completed).length;
-                    const elaRemaining = elaIxl.length - elaCompleted;
-                    const mathCompleted = mathIxl.filter(r => r.completed).length;
-                    const mathRemaining = mathIxl.length - mathCompleted;
-                    const totalRemaining = elaRemaining + mathRemaining;
-                    
-                    // Read from cell I1 via currentUser
-                    const daysRemaining = currentUser.schoolDaysRemaining || 105;
-                    const weeksRemaining = daysRemaining / 5;
-                    
-                    const elaPerDay = elaRemaining > 0 ? (elaRemaining / daysRemaining).toFixed(1) : 0;
-                    const elaPerWeek = elaRemaining > 0 ? (elaRemaining / weeksRemaining).toFixed(1) : 0;
-                    const mathPerDay = mathRemaining > 0 ? (mathRemaining / daysRemaining).toFixed(1) : 0;
-                    const mathPerWeek = mathRemaining > 0 ? (mathRemaining / weeksRemaining).toFixed(1) : 0;
-                    
-                    html += '<div class="bg-gradient-to-r from-green-500 to-teal-600 rounded-lg shadow-lg p-6 mb-8 text-white">';
-                    html += '<h2 class="text-2xl font-bold mb-4">📅 IXL Countdown to May 22, 2026</h2>';
-                    
-                    html += '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">';
-                    html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                    html += '<div class="text-4xl font-bold">' + daysRemaining + '</div>';
-                    html += '<div class="text-sm">School Days Left</div>';
-                    html += '</div>';
-                    html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                    html += '<div class="text-4xl font-bold">' + totalRemaining + '</div>';
-                    html += '<div class="text-sm">Total IXL Skills Left</div>';
-                    html += '</div>';
-                    html += '<div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">';
-                    html += '<div class="text-4xl font-bold">' + weeksRemaining.toFixed(0) + '</div>';
-                    html += '<div class="text-sm">Weeks Remaining</div>';
-                    html += '</div>';
-                    html += '</div>';
-                    
-                    // ELA and Math breakdown
-                    html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
-                    
-                    // ELA Stats
-                    if (elaRemaining > 0) {
-                        html += '<div class="bg-white bg-opacity-10 rounded-lg p-4">';
-                        html += '<h3 class="text-xl font-bold mb-3 text-blue-100">📚 ELA Skills</h3>';
-                        html += '<div class="space-y-2">';
-                        html += '<div class="flex justify-between"><span>Remaining:</span><strong>' + elaRemaining + ' skills</strong></div>';
-                        html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + elaPerDay + ' skills</strong></div>';
-                        html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + elaPerWeek + ' skills</strong></div>';
-                        html += '</div></div>';
-                    }
-                    
-                    // Math Stats
-                    if (mathRemaining > 0) {
-                        html += '<div class="bg-white bg-opacity-10 rounded-lg p-4">';
-                        html += '<h3 class="text-xl font-bold mb-3 text-purple-100">🔢 Math Skills</h3>';
-                        html += '<div class="space-y-2">';
-                        html += '<div class="flex justify-between"><span>Remaining:</span><strong>' + mathRemaining + ' skills</strong></div>';
-                        html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + mathPerDay + ' skills</strong></div>';
-                        html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + mathPerWeek + ' skills</strong></div>';
-                        html += '</div></div>';
-                    }
-                    
-                    html += '</div>';
-                    html += '</div>';
-                }
+                // CENTER: Requirements (6 columns on large screens)
+                html += '<div class="lg:col-span-6">';
                 
                 // Display each subject
                 for (const [subject, items] of Object.entries(bySubject)) {
@@ -836,6 +794,82 @@
                     html += '</div></div>';
                 }
                 
+                // Close CENTER column
+                html += '</div>';
+                
+                // RIGHT SIDEBAR: IXL Countdown (3 columns on large screens) - COLLAPSIBLE
+                const ixlRows = rows.filter(r => r.category === 'IXL Skills' || r.domain.includes('IXL'));
+                if (ixlRows.length > 0) {
+                    html += '<div class="lg:col-span-3">';
+                    html += '<div class="bg-gradient-to-br from-green-500 to-teal-600 rounded-lg shadow-lg p-5 text-white sticky top-6">';
+                    html += '<div class="cursor-pointer" onclick="toggleSection(\'ixl-countdown\')">';
+                    html += '<div class="flex justify-between items-center mb-3">';
+                    html += '<div>';
+                    html += '<h2 class="text-lg font-bold">📅 IXL Countdown</h2>';
+                    html += '<p class="text-sm text-green-100">to May 22, 2026</p>';
+                    html += '</div>';
+                    html += '<span id="ixl-countdown-toggle" class="text-2xl">▲</span>';
+                    html += '</div></div>';
+                    html += '<div id="ixl-countdown" style="display: block;">';
+                    
+                    // Split by subject
+                    const elaIxl = ixlRows.filter(r => r.subject === 'ELA');
+                    const mathIxl = ixlRows.filter(r => r.subject === 'Math');
+                    
+                    const elaCompleted = elaIxl.filter(r => r.completed).length;
+                    const elaRemaining = elaIxl.length - elaCompleted;
+                    const mathCompleted = mathIxl.filter(r => r.completed).length;
+                    const mathRemaining = mathIxl.length - mathCompleted;
+                    const totalRemaining = elaRemaining + mathRemaining;
+                    
+                    const daysRemaining = currentUser.schoolDaysRemaining || 105;
+                    const weeksRemaining = daysRemaining / 5;
+                    
+                    const elaPerDay = elaRemaining > 0 ? (elaRemaining / daysRemaining).toFixed(1) : 0;
+                    const elaPerWeek = elaRemaining > 0 ? (elaRemaining / weeksRemaining).toFixed(1) : 0;
+                    const mathPerDay = mathRemaining > 0 ? (mathRemaining / daysRemaining).toFixed(1) : 0;
+                    const mathPerWeek = mathRemaining > 0 ? (mathRemaining / weeksRemaining).toFixed(1) : 0;
+                    
+                    // Days remaining box
+                    html += '<div class="bg-white bg-opacity-20 rounded-lg p-3 text-center mb-3">';
+                    html += '<div class="text-3xl font-bold">' + daysRemaining + '</div>';
+                    html += '<div class="text-xs">School Days Left</div>';
+                    html += '</div>';
+                    
+                    // Total skills box
+                    html += '<div class="bg-white bg-opacity-20 rounded-lg p-3 text-center mb-3">';
+                    html += '<div class="text-3xl font-bold">' + totalRemaining + '</div>';
+                    html += '<div class="text-xs">Total IXL Skills</div>';
+                    html += '</div>';
+                    
+                    // ELA breakdown
+                    if (elaRemaining > 0) {
+                        html += '<div class="bg-white bg-opacity-10 rounded-lg p-3 mb-3">';
+                        html += '<h3 class="text-sm font-bold mb-2 text-blue-100">📚 ELA</h3>';
+                        html += '<div class="space-y-1 text-xs">';
+                        html += '<div class="flex justify-between"><span>Left:</span><strong>' + elaRemaining + '</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + elaPerDay + '</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + elaPerWeek + '</strong></div>';
+                        html += '</div></div>';
+                    }
+                    
+                    // Math breakdown
+                    if (mathRemaining > 0) {
+                        html += '<div class="bg-white bg-opacity-10 rounded-lg p-3">';
+                        html += '<h3 class="text-sm font-bold mb-2 text-purple-100">🔢 Math</h3>';
+                        html += '<div class="space-y-1 text-xs">';
+                        html += '<div class="flex justify-between"><span>Left:</span><strong>' + mathRemaining + '</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Day:</span><strong>' + mathPerDay + '</strong></div>';
+                        html += '<div class="flex justify-between"><span>Per Week:</span><strong>' + mathPerWeek + '</strong></div>';
+                        html += '</div></div>';
+                    }
+                    
+                    html += '</div></div></div>';
+                }
+                
+                // Close 3-column grid
+                html += '</div>';
+                
                 document.getElementById('student-content').innerHTML = html;
             } catch (err) {
                 console.error('Load progress error:', err);
@@ -897,6 +931,20 @@
                 loadStudentProgress();
             } catch (err) {
                 console.error('Theme change error:', err);
+            }
+        }
+        
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const toggle = document.getElementById(sectionId + '-toggle');
+            if (section && toggle) {
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    toggle.textContent = '▲';
+                } else {
+                    section.style.display = 'none';
+                    toggle.textContent = '▼';
+                }
             }
         }
         
