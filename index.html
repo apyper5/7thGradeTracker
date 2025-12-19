@@ -628,7 +628,7 @@
                 
                 // 1. OVERALL PROGRESS (Full width at top) - COLLAPSIBLE
                 html += '<div class="bg-white rounded-lg shadow-lg p-8 mb-6">';
-                html += '<div class="cursor-pointer" onclick="toggleSection(\'overall-progress\')">';
+                html += '<div class="cursor-pointer" onclick="toggleStudentSection(\'overall-progress\')">';
                 html += '<div class="flex justify-between items-center mb-4">';
                 html += '<h2 class="text-2xl font-bold text-gray-800">Overall Progress</h2>';
                 html += '<span id="overall-progress-toggle" class="text-2xl text-gray-600">▲</span>';
@@ -649,7 +649,7 @@
                 // 2. THEME PROGRESS REVEAL (Full width) - COLLAPSIBLE
                 const studentTheme = currentUser.progressTheme || 'mountains';
                 html += '<div class="bg-white rounded-lg shadow-lg p-6 mb-6">';
-                html += '<div class="cursor-pointer" onclick="toggleSection(\'theme-reveal\')">';
+                html += '<div class="cursor-pointer" onclick="toggleStudentSection(\'theme-reveal\')">';
                 html += '<div class="flex justify-between items-center mb-4">';
                 html += '<h2 class="text-xl font-bold text-gray-800">Your Progress Journey</h2>';
                 html += '<span id="theme-reveal-toggle" class="text-2xl text-gray-600">▲</span>';
@@ -683,7 +683,7 @@
                 // LEFT SIDEBAR: Achievements (3 columns on large screens) - COLLAPSIBLE
                 html += '<div class="lg:col-span-3">';
                 html += '<div class="bg-white rounded-lg shadow-lg p-6 sticky top-6">';
-                html += '<div class="cursor-pointer" onclick="toggleSection(\'achievements\')">';
+                html += '<div class="cursor-pointer" onclick="toggleStudentSection(\'achievements\')">';
                 html += '<div class="flex justify-between items-center mb-4">';
                 html += '<div>';
                 html += '<h2 class="text-xl font-bold text-gray-800">Achievements</h2>';
@@ -802,7 +802,7 @@
                 if (ixlRows.length > 0) {
                     html += '<div class="lg:col-span-3">';
                     html += '<div class="bg-gradient-to-br from-green-500 to-teal-600 rounded-lg shadow-lg p-5 text-white sticky top-6">';
-                    html += '<div class="cursor-pointer" onclick="toggleSection(\'ixl-countdown\')">';
+                    html += '<div class="cursor-pointer" onclick="toggleStudentSection(\'ixl-countdown\')">';
                     html += '<div class="flex justify-between items-center mb-3">';
                     html += '<div>';
                     html += '<h2 class="text-lg font-bold">📅 IXL Countdown</h2>';
@@ -934,7 +934,7 @@
             }
         }
         
-        function toggleSection(sectionId) {
+        function toggleStudentSection(sectionId) {
             const section = document.getElementById(sectionId);
             const toggle = document.getElementById(sectionId + '-toggle');
             if (section && toggle) {
