@@ -76,6 +76,35 @@
             text-align: center;
             pointer-events: none;
         }
+        
+        /* Pomodoro Timer Styles */
+        .timer-circle {
+            transform: rotate(-90deg);
+        }
+        
+        .timer-progress {
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        .timer-active .timer-progress {
+            animation: pulse-ring 2s ease-in-out infinite;
+        }
+
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+
+        /* Theme-based timer colors */
+        .theme-mountains .timer-stroke { stroke: #4a5568; }
+        .theme-ocean .timer-stroke { stroke: #3182ce; }
+        .theme-space .timer-stroke { stroke: #805ad5; }
+        .theme-pizza .timer-stroke { stroke: #e53e3e; }
+        .theme-corporate .timer-stroke { stroke: #2d3748; }
     </style>
 </head>
 <body>
@@ -560,6 +589,12 @@
                         <div class="mb-4 flex gap-2">
                             <button onclick="collapseAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Collapse All</button>
                             <button onclick="expandAllStudent()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">Expand All</button>
+                            <button onclick="openPomodoroTimer()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition flex items-center gap-2 text-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Focus Timer
+                            </button>
                         </div>
                         <div id="student-content">
                             <p>Loading progress...</p>
@@ -1202,6 +1237,375 @@
             }
         }
         
+        // ============= POMODORO TIMER FUNCTIONS =============
+        
+        // Pomodoro Timer State
+        let timerState = {
+            isRunning: false,
+            isPaused: false,
+            currentSession: 1,
+            sessionType: 'work', // 'work', 'shortBreak', 'longBreak'
+            timeRemaining: 25 * 60, // seconds
+            totalTimeForSession: 25 * 60,
+            interval: null,
+            settings: {
+                workDuration: 25,
+                shortBreak: 5,
+                longBreak: 15,
+                sessionsBeforeLongBreak: 4,
+                dailyGoal: 120,
+                soundEnabled: true
+            },
+            dailyStats: {
+                totalWorkMinutes: 0,
+                date: new Date().toDateString()
+            }
+        };
+
+        // Initialize timer on page load
+        function initPomodoroTimer() {
+            loadSettings();
+            loadDailyStats();
+            updateDisplay();
+            updateTotalWorkTime();
+        }
+
+        // Load settings from localStorage
+        function loadSettings() {
+            const saved = localStorage.getItem('pomodoroSettings');
+            if (saved) {
+                timerState.settings = JSON.parse(saved);
+                
+                // Update input fields
+                document.getElementById('workDuration').value = timerState.settings.workDuration;
+                document.getElementById('shortBreak').value = timerState.settings.shortBreak;
+                document.getElementById('longBreak').value = timerState.settings.longBreak;
+                document.getElementById('sessionsBeforeLongBreak').value = timerState.settings.sessionsBeforeLongBreak;
+                document.getElementById('dailyGoal').value = timerState.settings.dailyGoal;
+                document.getElementById('soundToggle').checked = timerState.settings.soundEnabled;
+                document.getElementById('workGoal').textContent = timerState.settings.dailyGoal;
+            }
+            
+            // Set initial time based on settings
+            timerState.timeRemaining = timerState.settings.workDuration * 60;
+            timerState.totalTimeForSession = timerState.settings.workDuration * 60;
+        }
+
+        // Save settings to localStorage
+        function saveSettings() {
+            timerState.settings = {
+                workDuration: parseInt(document.getElementById('workDuration').value),
+                shortBreak: parseInt(document.getElementById('shortBreak').value),
+                longBreak: parseInt(document.getElementById('longBreak').value),
+                sessionsBeforeLongBreak: parseInt(document.getElementById('sessionsBeforeLongBreak').value),
+                dailyGoal: parseInt(document.getElementById('dailyGoal').value),
+                soundEnabled: document.getElementById('soundToggle').checked
+            };
+            
+            localStorage.setItem('pomodoroSettings', JSON.stringify(timerState.settings));
+            document.getElementById('workGoal').textContent = timerState.settings.dailyGoal;
+            
+            // If timer is not running, update the time remaining
+            if (!timerState.isRunning) {
+                resetTimer();
+            }
+            
+            updateTotalWorkTime();
+        }
+
+        // Load daily stats
+        function loadDailyStats() {
+            const saved = localStorage.getItem('pomodoroDailyStats');
+            if (saved) {
+                const stats = JSON.parse(saved);
+                const today = new Date().toDateString();
+                
+                // Reset if it's a new day
+                if (stats.date !== today) {
+                    timerState.dailyStats = {
+                        totalWorkMinutes: 0,
+                        date: today
+                    };
+                    saveDailyStats();
+                } else {
+                    timerState.dailyStats = stats;
+                }
+            }
+        }
+
+        // Save daily stats
+        function saveDailyStats() {
+            localStorage.setItem('pomodoroDailyStats', JSON.stringify(timerState.dailyStats));
+        }
+
+        // Reset daily stats
+        function resetDailyStats() {
+            if (confirm('Are you sure you want to reset today\'s work time?')) {
+                timerState.dailyStats = {
+                    totalWorkMinutes: 0,
+                    date: new Date().toDateString()
+                };
+                saveDailyStats();
+                updateTotalWorkTime();
+            }
+        }
+
+        // Open modal
+        function openPomodoroTimer() {
+            document.getElementById('pomodoroModal').classList.remove('hidden');
+            initPomodoroTimer();
+            updateDisplay();
+        }
+
+        // Close modal
+        function closePomodoroTimer() {
+            document.getElementById('pomodoroModal').classList.add('hidden');
+        }
+
+        // Toggle settings panel
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            const chevron = document.getElementById('settingsChevron');
+            
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                panel.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Start timer
+        function startTimer() {
+            if (!timerState.isRunning) {
+                timerState.isRunning = true;
+                timerState.isPaused = false;
+                
+                document.getElementById('startBtn').classList.add('hidden');
+                document.getElementById('pauseBtn').classList.remove('hidden');
+                document.getElementById('timerSvg').classList.add('timer-active');
+                
+                timerState.interval = setInterval(tick, 1000);
+                updateDisplay();
+            }
+        }
+
+        // Pause timer
+        function pauseTimer() {
+            if (timerState.isRunning) {
+                timerState.isRunning = false;
+                timerState.isPaused = true;
+                
+                clearInterval(timerState.interval);
+                
+                document.getElementById('startBtn').classList.remove('hidden');
+                document.getElementById('pauseBtn').classList.add('hidden');
+                document.getElementById('timerSvg').classList.remove('timer-active');
+                
+                updateDisplay();
+            }
+        }
+
+        // Reset timer
+        function resetTimer() {
+            pauseTimer();
+            
+            timerState.isPaused = false;
+            timerState.currentSession = 1;
+            timerState.sessionType = 'work';
+            timerState.timeRemaining = timerState.settings.workDuration * 60;
+            timerState.totalTimeForSession = timerState.settings.workDuration * 60;
+            
+            updateDisplay();
+        }
+
+        // Skip to next session
+        function skipSession() {
+            pauseTimer();
+            completeSession();
+        }
+
+        // Timer tick
+        function tick() {
+            timerState.timeRemaining--;
+            
+            if (timerState.timeRemaining <= 0) {
+                completeSession();
+            }
+            
+            updateDisplay();
+        }
+
+        // Complete session
+        function completeSession() {
+            pauseTimer();
+            
+            // Add work time to daily stats if it was a work session
+            if (timerState.sessionType === 'work') {
+                const workMinutes = Math.floor(timerState.settings.workDuration);
+                timerState.dailyStats.totalWorkMinutes += workMinutes;
+                saveDailyStats();
+                updateTotalWorkTime();
+            }
+            
+            // Play sound if enabled
+            if (timerState.settings.soundEnabled) {
+                playCompletionSound();
+            }
+            
+            // Move to next session
+            if (timerState.sessionType === 'work') {
+                // Check if it's time for a long break
+                if (timerState.currentSession >= timerState.settings.sessionsBeforeLongBreak) {
+                    timerState.sessionType = 'longBreak';
+                    timerState.timeRemaining = timerState.settings.longBreak * 60;
+                    timerState.totalTimeForSession = timerState.settings.longBreak * 60;
+                    timerState.currentSession = 0; // Reset counter after long break
+                } else {
+                    timerState.sessionType = 'shortBreak';
+                    timerState.timeRemaining = timerState.settings.shortBreak * 60;
+                    timerState.totalTimeForSession = timerState.settings.shortBreak * 60;
+                }
+            } else {
+                // Break is over, back to work
+                timerState.sessionType = 'work';
+                timerState.currentSession++;
+                timerState.timeRemaining = timerState.settings.workDuration * 60;
+                timerState.totalTimeForSession = timerState.settings.workDuration * 60;
+            }
+            
+            updateDisplay();
+            showNotification();
+        }
+
+        // Update display
+        function updateDisplay() {
+            // Update time display
+            const minutes = Math.floor(timerState.timeRemaining / 60);
+            const seconds = timerState.timeRemaining % 60;
+            document.getElementById('timerDisplay').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update session type
+            const sessionTypeText = {
+                'work': '💼 Work Session',
+                'shortBreak': '☕ Short Break',
+                'longBreak': '🌟 Long Break'
+            };
+            document.getElementById('sessionType').textContent = sessionTypeText[timerState.sessionType];
+            
+            // Update session counter
+            document.getElementById('currentSession').textContent = timerState.currentSession;
+            document.getElementById('totalSessions').textContent = timerState.settings.sessionsBeforeLongBreak;
+            
+            // Update status text
+            let statusText = 'Ready to start';
+            if (timerState.isRunning) {
+                statusText = 'Focus time! 🎯';
+            } else if (timerState.isPaused) {
+                statusText = 'Paused';
+            } else if (timerState.sessionType !== 'work') {
+                statusText = 'Time for a break! 😊';
+            }
+            document.getElementById('timerStatus').textContent = statusText;
+            
+            // Update progress circle
+            const circumference = 2 * Math.PI * 120; // radius is 120
+            const progress = timerState.timeRemaining / timerState.totalTimeForSession;
+            const offset = circumference * (1 - progress);
+            document.getElementById('timerProgress').style.strokeDashoffset = offset;
+            
+            // Update circle color based on session type
+            const colors = {
+                'work': '#ef4444',
+                'shortBreak': '#3b82f6',
+                'longBreak': '#8b5cf6'
+            };
+            document.getElementById('timerProgress').setAttribute('stroke', colors[timerState.sessionType]);
+        }
+
+        // Update total work time display
+        function updateTotalWorkTime() {
+            const totalMinutes = timerState.dailyStats.totalWorkMinutes;
+            const goal = timerState.settings.dailyGoal;
+            
+            // Update text
+            if (totalMinutes >= 60) {
+                const hours = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
+                document.getElementById('totalWorkTime').textContent = 
+                    `${hours}h ${mins}m`;
+            } else {
+                document.getElementById('totalWorkTime').textContent = `${totalMinutes} minutes`;
+            }
+            
+            // Update progress bar
+            const percentage = Math.min((totalMinutes / goal) * 100, 100);
+            document.getElementById('workProgressBar').style.width = `${percentage}%`;
+            
+            // Change color when goal is reached
+            if (percentage >= 100) {
+                document.getElementById('workProgressBar').classList.remove('bg-green-500');
+                document.getElementById('workProgressBar').classList.add('bg-purple-500');
+            } else {
+                document.getElementById('workProgressBar').classList.remove('bg-purple-500');
+                document.getElementById('workProgressBar').classList.add('bg-green-500');
+            }
+        }
+
+        // Play completion sound
+        function playCompletionSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (err) {
+                console.log('Audio not available:', err);
+            }
+        }
+
+        // Show notification when session completes
+        function showNotification() {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const messages = {
+                    'work': 'Great job! Time for a break. 🎉',
+                    'shortBreak': 'Break over! Ready to focus again? 💪',
+                    'longBreak': 'Refreshed and ready to go! 🚀'
+                };
+                new Notification('Focus Timer', {
+                    body: messages[timerState.sessionType],
+                    icon: '🍅'
+                });
+            }
+        }
+
+        // Request notification permission on first load
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePomodoroTimer();
+            }
+        });
+        
+        // ============= END POMODORO TIMER FUNCTIONS =============
+        
         window.addEventListener('load', () => {
             console.log('Window loaded, starting initialization');
             gisLoaded();
@@ -1209,5 +1613,231 @@
         
         console.log('Script loaded successfully');
     </script>
+    
+    <!-- Pomodoro Timer Modal -->
+    <div id="pomodoroModal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-red-500 to-orange-500 text-white p-6 rounded-t-2xl">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">🍅 Focus Timer</h2>
+                    <button onclick="closePomodoroTimer()" class="text-white hover:text-gray-200 text-3xl leading-none">&times;</button>
+                </div>
+                <p class="text-red-100 mt-2">Stay focused and take breaks!</p>
+            </div>
+
+            <!-- Main Timer Display -->
+            <div class="p-8">
+                <div class="text-center mb-8">
+                    <!-- Session Info -->
+                    <div class="mb-4">
+                        <span id="sessionType" class="text-2xl font-bold text-gray-700">Work Session</span>
+                        <div class="text-gray-500 mt-1">
+                            Session <span id="currentSession">1</span> of <span id="totalSessions">4</span>
+                        </div>
+                    </div>
+
+                    <!-- Circular Timer -->
+                    <div class="relative inline-block">
+                        <svg class="timer-circle" width="280" height="280" id="timerSvg">
+                            <!-- Background circle -->
+                            <circle cx="140" cy="140" r="120" fill="none" stroke="#e5e7eb" stroke-width="12"/>
+                            <!-- Progress circle -->
+                            <circle 
+                                id="timerProgress"
+                                class="timer-progress timer-stroke"
+                                cx="140" 
+                                cy="140" 
+                                r="120" 
+                                fill="none" 
+                                stroke="#ef4444" 
+                                stroke-width="12"
+                                stroke-dasharray="754"
+                                stroke-dashoffset="0"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <!-- Time Display -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div>
+                                <div id="timerDisplay" class="text-6xl font-bold text-gray-800">25:00</div>
+                                <div id="timerStatus" class="text-gray-500 mt-2">Ready to start</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Work Time Today -->
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div class="text-sm text-gray-600">Total Work Time Today</div>
+                        <div id="totalWorkTime" class="text-2xl font-bold text-gray-800">0 minutes</div>
+                        <div class="text-sm text-gray-500 mt-1">
+                            Goal: <span id="workGoal">120</span> minutes
+                        </div>
+                        <!-- Progress bar -->
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div id="workProgressBar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex gap-3 justify-center mb-8">
+                    <button 
+                        id="startBtn"
+                        onclick="startTimer()"
+                        class="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold transition"
+                    >
+                        Start
+                    </button>
+                    <button 
+                        id="pauseBtn"
+                        onclick="pauseTimer()"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-lg font-semibold transition hidden"
+                    >
+                        Pause
+                    </button>
+                    <button 
+                        onclick="resetTimer()"
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition"
+                    >
+                        Reset
+                    </button>
+                    <button 
+                        onclick="skipSession()"
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold transition"
+                    >
+                        Skip
+                    </button>
+                </div>
+
+                <!-- Settings Toggle -->
+                <div class="border-t pt-6">
+                    <button 
+                        onclick="toggleSettings()"
+                        class="w-full text-left flex items-center justify-between text-gray-700 font-semibold hover:text-gray-900"
+                    >
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Timer Settings
+                        </span>
+                        <svg id="settingsChevron" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Settings Panel -->
+                    <div id="settingsPanel" class="hidden mt-4 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Work Duration -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Work Duration (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="workDuration"
+                                    value="25"
+                                    min="1"
+                                    max="60"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    onchange="saveSettings()"
+                                >
+                            </div>
+
+                            <!-- Short Break -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Short Break (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="shortBreak"
+                                    value="5"
+                                    min="1"
+                                    max="30"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    onchange="saveSettings()"
+                                >
+                            </div>
+
+                            <!-- Long Break -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Long Break (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="longBreak"
+                                    value="15"
+                                    min="1"
+                                    max="60"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    onchange="saveSettings()"
+                                >
+                            </div>
+
+                            <!-- Sessions Before Long Break -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Sessions Before Long Break
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="sessionsBeforeLongBreak"
+                                    value="4"
+                                    min="1"
+                                    max="10"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    onchange="saveSettings()"
+                                >
+                            </div>
+
+                            <!-- Daily Work Goal -->
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Daily Work Goal (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="dailyGoal"
+                                    value="120"
+                                    min="30"
+                                    max="480"
+                                    step="30"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    onchange="saveSettings()"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Sound Toggle -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div>
+                                <div class="font-medium text-gray-700">Sound Notifications</div>
+                                <div class="text-sm text-gray-500">Play a sound when timer completes</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="soundToggle" class="sr-only peer" checked onchange="saveSettings()">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                            </label>
+                        </div>
+
+                        <!-- Reset Daily Stats -->
+                        <button 
+                            onclick="resetDailyStats()"
+                            class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition"
+                        >
+                            Reset Today's Work Time
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
 </body>
 </html>
