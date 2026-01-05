@@ -616,6 +616,9 @@
                 };
                 const levelTitle = levelTitles[Math.min(level, 10)] || 'Champion';
                 
+                // Get student theme (needed for achievements)
+                const studentTheme = currentUser.progressTheme || 'mountains';
+                
                 // GAMIFICATION: Calculate subject-specific progress
                 const subjectProgress = {};
                 for (const [subject, items] of Object.entries(bySubject)) {
@@ -703,7 +706,6 @@
                 html += '</div></div>';
                 
                 // 2. THEME PROGRESS REVEAL (Full width) - COLLAPSIBLE
-                const studentTheme = currentUser.progressTheme || 'mountains';
                 html += '<div class="bg-white rounded-lg shadow-lg p-6 mb-6">';
                 html += '<div class="cursor-pointer" onclick="toggleStudentSection(\'theme-reveal\')">';
                 html += '<div class="flex justify-between items-center mb-4">';
