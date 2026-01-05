@@ -206,9 +206,13 @@
                 currentUser.progressData = result.progress;
                 currentUser.schoolDaysRemaining = result.schoolDaysRemaining || 105;
                 currentUser.progressTheme = result.progressTheme || 'mountains';
+                currentUser.seenAchievements = result.seenAchievements || [];
                 
                 currentView = 'student';
                 renderApp();
+                
+                // Check for new achievements after rendering
+                setTimeout(() => checkForNewAchievements(), 500);
             } catch (err) {
                 console.error('Student login error:', err);
                 showError('Failed to connect');
@@ -995,6 +999,167 @@
             } catch (err) {
                 console.error('Theme change error:', err);
             }
+        }
+        
+        // Check for newly unlocked achievements and show popups
+        async function checkForNewAchievements() {
+            if (currentView !== 'student' || !currentUser) return;
+            
+            try {
+                const rows = currentUser.progressData;
+                
+                // Recalculate all achievements (same logic as in loadStudentProgress)
+                const bySubject = {};
+                rows.forEach(r => {
+                    if (!bySubject[r.subject]) bySubject[r.subject] = [];
+                    bySubject[r.subject].push(r);
+                });
+                
+                const totalCompleted = rows.filter(r => r.completed).length;
+                const totalReqs = rows.length;
+                const overallPercent = Math.round((totalCompleted / totalReqs) * 100);
+                
+                const xp = totalCompleted * 10;
+                const level = Math.floor(xp / 100) + 1;
+                
+                const studentTheme = currentUser.progressTheme || 'mountains';
+                
+                const subjectProgress = {};
+                for (const [subject, items] of Object.entries(bySubject)) {
+                    const completed = items.filter(i => i.completed).length;
+                    const total = items.length;
+                    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    subjectProgress[subject] = { completed, total, percent };
+                }
+                
+                const themeHistory = currentUser.themeHistory || [];
+                const themeChanges = currentUser.themeChanges || 0;
+                
+                const achievements = [
+                    { id: 'first', name: 'Getting Started', desc: 'Complete your first requirement', icon: '🌱', unlocked: totalCompleted >= 1, hidden: false },
+                    { id: 'ten', name: 'On Fire', desc: 'Complete 10 requirements', icon: '🔥', unlocked: totalCompleted >= 10, hidden: false },
+                    { id: 'quarter', name: 'Star Student', desc: 'Reach 25% completion', icon: '⭐', unlocked: overallPercent >= 25, hidden: false },
+                    { id: 'halfway', name: 'Halfway Hero', desc: 'Reach 50% completion', icon: '🎯', unlocked: overallPercent >= 50, hidden: false },
+                    { id: 'three_quarter', name: 'Almost There', desc: 'Reach 75% completion', icon: '🏆', unlocked: overallPercent >= 75, hidden: false },
+                    { id: 'complete', name: '7th Grade Champion', desc: 'Reach 100% completion', icon: '👑', unlocked: overallPercent >= 100, hidden: false },
+                    { id: 'ela_25', name: 'ELA - Quarter Done', desc: 'Complete 25% of ELA', icon: '📚', unlocked: subjectProgress.ELA && subjectProgress.ELA.percent >= 25, hidden: false },
+                    { id: 'ela_50', name: 'ELA - Halfway', desc: 'Complete 50% of ELA', icon: '📚', unlocked: subjectProgress.ELA && subjectProgress.ELA.percent >= 50, hidden: false },
+                    { id: 'ela_100', name: 'ELA Master', desc: 'Complete 100% of ELA', icon: '📚', unlocked: subjectProgress.ELA && subjectProgress.ELA.percent >= 100, hidden: false },
+                    { id: 'math_25', name: 'Math - Quarter Done', desc: 'Complete 25% of Math', icon: '🔢', unlocked: subjectProgress.Math && subjectProgress.Math.percent >= 25, hidden: false },
+                    { id: 'math_50', name: 'Math - Halfway', desc: 'Complete 50% of Math', icon: '🔢', unlocked: subjectProgress.Math && subjectProgress.Math.percent >= 50, hidden: false },
+                    { id: 'math_100', name: 'Math Wizard', desc: 'Complete 100% of Math', icon: '🔢', unlocked: subjectProgress.Math && subjectProgress.Math.percent >= 100, hidden: false },
+                    { id: 'science_25', name: 'Science - Quarter Done', desc: 'Complete 25% of Science', icon: '🔬', unlocked: subjectProgress.Science && subjectProgress.Science.percent >= 25, hidden: false },
+                    { id: 'science_50', name: 'Science - Halfway', desc: 'Complete 50% of Science', icon: '🔬', unlocked: subjectProgress.Science && subjectProgress.Science.percent >= 50, hidden: false },
+                    { id: 'science_100', name: 'Science Genius', desc: 'Complete 100% of Science', icon: '🔬', unlocked: subjectProgress.Science && subjectProgress.Science.percent >= 100, hidden: false },
+                    { id: 'level_6', name: 'Broccoli Boss', desc: 'Reach Level 6', icon: '🥦', unlocked: level >= 6, hidden: true },
+                    { id: 'level_7', name: 'Carrot Conqueror', desc: 'Reach Level 7', icon: '🥕', unlocked: level >= 7, hidden: true },
+                    { id: 'level_8', name: 'Cool as a Cucumber', desc: 'Reach Level 8', icon: '🥒', unlocked: level >= 8, hidden: true },
+                    { id: 'level_9', name: 'Corn-gratulations', desc: 'Reach Level 9', icon: '🌽', unlocked: level >= 9, hidden: true },
+                    { id: 'level_10', name: 'Couch Potato', desc: 'Reach Level 10', icon: '🥔', unlocked: level >= 10, hidden: true },
+                    { id: 'theme_mountains', name: 'Happy Little Trees', desc: 'Select Mountains theme', icon: '🏔️', unlocked: studentTheme === 'mountains', hidden: true },
+                    { id: 'theme_ocean', name: 'Deep Dive', desc: 'Select Ocean theme', icon: '🌊', unlocked: studentTheme === 'ocean', hidden: true },
+                    { id: 'theme_space', name: 'Space Cadet', desc: 'Select Space theme', icon: '🚀', unlocked: studentTheme === 'space', hidden: true },
+                    { id: 'theme_pizza', name: 'Pizza Party', desc: 'Select 3-Dizza theme', icon: '🍕', unlocked: studentTheme === 'pizza', hidden: true },
+                    { id: 'theme_corporate', name: 'Never Gonna Give You Up', desc: 'Select Corporate America theme', icon: '🎵', unlocked: studentTheme === 'corporate', hidden: true },
+                    { id: 'theme_collector', name: 'Theme Collector', desc: 'Try all 5 themes', icon: '🎨', unlocked: themeHistory.length >= 5, hidden: true },
+                    { id: 'indecisive', name: 'Indecisive', desc: 'Change theme 10 times', icon: '🔄', unlocked: themeChanges >= 10, hidden: true }
+                ];
+                
+                // Find newly unlocked achievements
+                const seenIds = currentUser.seenAchievements || [];
+                const unlockedAchievements = achievements.filter(a => a.unlocked);
+                const newAchievements = unlockedAchievements.filter(a => !seenIds.includes(a.id));
+                
+                if (newAchievements.length > 0) {
+                    // Show popup for each new achievement
+                    for (const ach of newAchievements) {
+                        await showAchievementPopup(ach);
+                    }
+                    
+                    // Update seen achievements in sheet
+                    const allSeenIds = [...seenIds, ...newAchievements.map(a => a.id)];
+                    currentUser.seenAchievements = allSeenIds;
+                    
+                    await callAppsScript({
+                        action: 'updateCell',
+                        studentId: currentUser.id,
+                        row: 1,
+                        col: 'K',
+                        value: allSeenIds.join(',')
+                    }, 'GET');
+                }
+            } catch (err) {
+                console.error('Check achievements error:', err);
+            }
+        }
+        
+        // Show achievement unlock popup
+        function showAchievementPopup(achievement) {
+            return new Promise((resolve) => {
+                const popup = document.createElement('div');
+                popup.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) scale(0.8);
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 2rem;
+                    border-radius: 1rem;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                    z-index: 10000;
+                    text-align: center;
+                    min-width: 300px;
+                    max-width: 400px;
+                    opacity: 0;
+                    transition: all 0.3s ease;
+                `;
+                
+                popup.innerHTML = `
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">${achievement.icon}</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">Achievement Unlocked!</div>
+                    <div style="font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem;">${achievement.name}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">${achievement.desc}</div>
+                    <button onclick="this.parentElement.remove()" style="
+                        margin-top: 1.5rem;
+                        padding: 0.5rem 2rem;
+                        background: white;
+                        color: #667eea;
+                        border: none;
+                        border-radius: 0.5rem;
+                        font-weight: bold;
+                        cursor: pointer;
+                    ">Awesome!</button>
+                `;
+                
+                document.body.appendChild(popup);
+                
+                // Animate in
+                setTimeout(() => {
+                    popup.style.opacity = '1';
+                    popup.style.transform = 'translate(-50%, -50%) scale(1)';
+                }, 10);
+                
+                // Auto-close after 5 seconds or when button clicked
+                const closeTimer = setTimeout(() => {
+                    popup.style.opacity = '0';
+                    popup.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                    setTimeout(() => {
+                        popup.remove();
+                        resolve();
+                    }, 300);
+                }, 5000);
+                
+                popup.querySelector('button').addEventListener('click', () => {
+                    clearTimeout(closeTimer);
+                    popup.style.opacity = '0';
+                    popup.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                    setTimeout(() => {
+                        popup.remove();
+                        resolve();
+                    }, 300);
+                });
+            });
         }
         
         function toggleStudentSection(sectionId) {
