@@ -612,16 +612,68 @@
                 };
                 const levelTitle = levelTitles[Math.min(level, 10)] || 'Champion';
                 
+                // GAMIFICATION: Calculate subject-specific progress
+                const subjectProgress = {};
+                for (const [subject, items] of Object.entries(bySubject)) {
+                    const completed = items.filter(i => i.completed).length;
+                    const total = items.length;
+                    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    subjectProgress[subject] = { completed, total, percent };
+                }
+                
+                // Track theme history (stored in K1 as comma-separated list)
+                const themeHistory = currentUser.themeHistory || [];
+                const themeChanges = currentUser.themeChanges || 0;
+                
                 // GAMIFICATION: Check achievements
                 const achievements = [
-                    { id: 'first_step', name: 'First Step', desc: 'Complete your first requirement', icon: '🎯', unlocked: totalCompleted >= 1 },
-                    { id: 'getting_started', name: 'Getting Started', desc: 'Complete 10 requirements', icon: '🔥', unlocked: totalCompleted >= 10 },
-                    { id: 'halfway', name: 'Half Way There', desc: 'Reach 50% completion', icon: '⭐', unlocked: overallPercent >= 50 },
-                    { id: 'almost_done', name: 'Almost Done', desc: 'Reach 75% completion', icon: '🏆', unlocked: overallPercent >= 75 },
-                    { id: 'champion', name: '7th Grade Champion', desc: 'Complete 100%!', icon: '👑', unlocked: overallPercent >= 100 }
+                    // === STANDARD ACHIEVEMENTS (Always Visible) ===
+                    // Overall Progress
+                    { id: 'first', name: 'Getting Started', desc: 'Complete your first requirement', icon: '🌱', unlocked: totalCompleted >= 1, hidden: false },
+                    { id: 'ten', name: 'On Fire', desc: 'Complete 10 requirements', icon: '🔥', unlocked: totalCompleted >= 10, hidden: false },
+                    { id: 'quarter', name: 'Star Student', desc: 'Reach 25% completion', icon: '⭐', unlocked: overallPercent >= 25, hidden: false },
+                    { id: 'halfway', name: 'Halfway Hero', desc: 'Reach 50% completion', icon: '🎯', unlocked: overallPercent >= 50, hidden: false },
+                    { id: 'three_quarter', name: 'Almost There', desc: 'Reach 75% completion', icon: '🏆', unlocked: overallPercent >= 75, hidden: false },
+                    { id: 'complete', name: '7th Grade Champion', desc: 'Reach 100% completion', icon: '👑', unlocked: overallPercent >= 100, hidden: false },
+                    
+                    // ELA Progress
+                    { id: 'ela_25', name: 'ELA - Quarter Done', desc: 'Complete 25% of ELA', icon: '📚', unlocked: subjectProgress.ELA && subjectProgress.ELA.percent >= 25, hidden: false },
+                    { id: 'ela_50', name: 'ELA - Halfway', desc: 'Complete 50% of ELA', icon: '📚', unlocked: subjectProgress.ELA && subjectProgress.ELA.percent >= 50, hidden: false },
+                    { id: 'ela_100', name: 'ELA Master', desc: 'Complete 100% of ELA', icon: '📚', unlocked: subjectProgress.ELA && subjectProgress.ELA.percent >= 100, hidden: false },
+                    
+                    // Math Progress
+                    { id: 'math_25', name: 'Math - Quarter Done', desc: 'Complete 25% of Math', icon: '🔢', unlocked: subjectProgress.Math && subjectProgress.Math.percent >= 25, hidden: false },
+                    { id: 'math_50', name: 'Math - Halfway', desc: 'Complete 50% of Math', icon: '🔢', unlocked: subjectProgress.Math && subjectProgress.Math.percent >= 50, hidden: false },
+                    { id: 'math_100', name: 'Math Wizard', desc: 'Complete 100% of Math', icon: '🔢', unlocked: subjectProgress.Math && subjectProgress.Math.percent >= 100, hidden: false },
+                    
+                    // Science Progress
+                    { id: 'science_25', name: 'Science - Quarter Done', desc: 'Complete 25% of Science', icon: '🔬', unlocked: subjectProgress.Science && subjectProgress.Science.percent >= 25, hidden: false },
+                    { id: 'science_50', name: 'Science - Halfway', desc: 'Complete 50% of Science', icon: '🔬', unlocked: subjectProgress.Science && subjectProgress.Science.percent >= 50, hidden: false },
+                    { id: 'science_100', name: 'Science Genius', desc: 'Complete 100% of Science', icon: '🔬', unlocked: subjectProgress.Science && subjectProgress.Science.percent >= 100, hidden: false },
+                    
+                    // === HIDDEN ACHIEVEMENTS ===
+                    // Vegetable Levels
+                    { id: 'level_6', name: 'Broccoli Boss', desc: 'Reach Level 6', icon: '🥦', unlocked: level >= 6, hidden: true },
+                    { id: 'level_7', name: 'Carrot Conqueror', desc: 'Reach Level 7', icon: '🥕', unlocked: level >= 7, hidden: true },
+                    { id: 'level_8', name: 'Cool as a Cucumber', desc: 'Reach Level 8', icon: '🥒', unlocked: level >= 8, hidden: true },
+                    { id: 'level_9', name: 'Corn-gratulations', desc: 'Reach Level 9', icon: '🌽', unlocked: level >= 9, hidden: true },
+                    { id: 'level_10', name: 'Couch Potato', desc: 'Reach Level 10', icon: '🥔', unlocked: level >= 10, hidden: true },
+                    
+                    // Theme-Based
+                    { id: 'theme_mountains', name: 'Happy Little Trees', desc: 'Select Mountains theme', icon: '🏔️', unlocked: studentTheme === 'mountains', hidden: true },
+                    { id: 'theme_ocean', name: 'Deep Dive', desc: 'Select Ocean theme', icon: '🌊', unlocked: studentTheme === 'ocean', hidden: true },
+                    { id: 'theme_space', name: 'Space Cadet', desc: 'Select Space theme', icon: '🚀', unlocked: studentTheme === 'space', hidden: true },
+                    { id: 'theme_pizza', name: 'Pizza Party', desc: 'Select 3-Dizza theme', icon: '🍕', unlocked: studentTheme === 'pizza', hidden: true },
+                    { id: 'theme_corporate', name: 'Never Gonna Give You Up', desc: 'Select Corporate America theme', icon: '🎵', unlocked: studentTheme === 'corporate', hidden: true },
+                    
+                    // Theme Challenges
+                    { id: 'theme_collector', name: 'Theme Collector', desc: 'Try all 5 themes', icon: '🎨', unlocked: themeHistory.length >= 5, hidden: true },
+                    { id: 'indecisive', name: 'Indecisive', desc: 'Change theme 10 times', icon: '🔄', unlocked: themeChanges >= 10, hidden: true }
                 ];
                 
                 const unlockedCount = achievements.filter(a => a.unlocked).length;
+                const totalAchievements = achievements.length;
+                
                 
                 // Start building HTML
                 let html = '';
@@ -687,21 +739,23 @@
                 html += '<div class="flex justify-between items-center mb-4">';
                 html += '<div>';
                 html += '<h2 class="text-xl font-bold text-gray-800">Achievements</h2>';
-                html += '<p class="text-sm text-gray-600">' + unlockedCount + ' of ' + achievements.length + ' unlocked</p>';
+                html += '<p class="text-sm text-gray-600">' + unlockedCount + ' of ' + totalAchievements + ' unlocked</p>';
                 html += '</div>';
                 html += '<span id="achievements-toggle" class="text-2xl text-gray-600">▲</span>';
                 html += '</div></div>';
                 html += '<div id="achievements" style="display: block;" class="space-y-3">';
                 achievements.forEach(ach => {
+                    // Hidden achievements show as ??? when locked
+                    const isHidden = ach.hidden && !ach.unlocked;
                     const unlockClass = ach.unlocked ? 'bg-gradient-to-br from-yellow-100 to-yellow-200 border-yellow-400' : 'bg-gray-100 border-gray-300 opacity-50';
                     html += '<div class="border-2 ' + unlockClass + ' rounded-lg p-3 text-center">';
-                    html += '<div class="text-3xl mb-1">' + ach.icon + '</div>';
-                    html += '<div class="font-bold text-xs text-gray-800">' + ach.name + '</div>';
-                    html += '<div class="text-xs text-gray-600 mt-1">' + ach.desc + '</div>';
+                    html += '<div class="text-3xl mb-1">' + (isHidden ? '❓' : ach.icon) + '</div>';
+                    html += '<div class="font-bold text-xs text-gray-800">' + (isHidden ? '???' : ach.name) + '</div>';
+                    html += '<div class="text-xs text-gray-600 mt-1">' + (isHidden ? 'Hidden Achievement' : ach.desc) + '</div>';
                     if (ach.unlocked) {
-                        html += '<div class="text-xs text-green-600 font-semibold mt-1">✓</div>';
+                        html += '<div class="text-xs text-green-600 font-semibold mt-1">✓ Unlocked</div>';
                     } else {
-                        html += '<div class="text-xs text-gray-500 mt-1">🔒</div>';
+                        html += '<div class="text-xs text-gray-500 mt-1">🔒 Locked</div>';
                     }
                     html += '</div>';
                 });
