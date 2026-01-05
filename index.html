@@ -36,8 +36,12 @@
             transition: --reveal-percent 0.5s ease;
         }
         
-        /* Theme placeholder images - REPLACE THESE WITH ACTUAL IMAGES */
-        .theme-mountains { background: linear-gradient(to bottom, #87CEEB 0%, #E8E8E8 50%, #8B7355 100%); }
+        /* Theme images */
+        .theme-mountains { 
+            background-image: url('https://gardenandgun.com/wp-content/uploads/2017/10/Bob-Ross.png');
+            background-size: cover;
+            background-position: center;
+        }
         .theme-ocean { background: linear-gradient(to bottom, #006994 0%, #0099CC 50%, #00CED1 100%); }
         .theme-space { background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%); }
         .theme-pizza { background: #FFD700; }
@@ -717,13 +721,16 @@
                 html += '</select></div>';
                 html += '<div class="theme-reveal-container">';
                 html += '<div class="theme-image theme-' + studentTheme + '">';
-                html += '<div class="theme-placeholder-text">';
-                if (studentTheme === 'mountains') html += 'Bob Ross<br>Painting Mountains';
-                else if (studentTheme === 'ocean') html += 'Bob Ross<br>Underwater Adventure';
-                else if (studentTheme === 'space') html += 'Bob Ross<br>In Space with Alien';
-                else if (studentTheme === 'pizza') html += '3-Dizza<br>Low-Poly Pizza';
-                else if (studentTheme === 'corporate') html += 'Rick Astley<br>Never Gonna Give You Up';
-                html += '</div></div>';
+                // Only show placeholder text for themes that don't have real images yet
+                if (studentTheme !== 'mountains') {
+                    html += '<div class="theme-placeholder-text">';
+                    if (studentTheme === 'ocean') html += 'Bob Ross<br>Underwater Adventure';
+                    else if (studentTheme === 'space') html += 'Bob Ross<br>In Space with Alien';
+                    else if (studentTheme === 'pizza') html += '3-Dizza<br>Low-Poly Pizza';
+                    else if (studentTheme === 'corporate') html += 'Rick Astley<br>Never Gonna Give You Up';
+                    html += '</div>';
+                }
+                html += '</div>';
                 html += '<div class="theme-reveal-mask" style="--reveal-percent: ' + overallPercent + '%"></div>';
                 html += '</div>';
                 html += '<p class="text-center text-gray-600 mt-4">' + overallPercent + '% Revealed</p>';
