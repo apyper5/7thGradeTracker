@@ -687,6 +687,98 @@
                 const themeHistory = currentUser.themeHistory || [];
                 const themeChanges = currentUser.themeChanges || 0;
                 
+                // DAILY TRACKING: Parse dates from completed field
+                function parseCompletionDate(completedValue) {
+                    if (!completedValue) return null;
+                    
+                    // Try to parse as a date (supports formats like "1/6/2026", "2026-01-06", "Jan 6", etc.)
+                    const dateStr = String(completedValue).trim();
+                    
+                    // Common date patterns
+                    const datePatterns = [
+                        /^\d{1,2}\/\d{1,2}\/\d{4}$/,        // MM/DD/YYYY or M/D/YYYY
+                        /^\d{4}-\d{1,2}-\d{1,2}$/,          // YYYY-MM-DD
+                        /^\d{1,2}-\d{1,2}-\d{4}$/,          // MM-DD-YYYY
+                        /^[A-Za-z]{3}\s+\d{1,2},?\s+\d{4}$/, // Jan 6, 2026 or Jan 6 2026
+                        /^\d{1,2}\/\d{1,2}$/                 // MM/DD (assumes current year)
+                    ];
+                    
+                    // Check if it looks like a date
+                    const looksLikeDate = datePatterns.some(pattern => pattern.test(dateStr));
+                    
+                    if (looksLikeDate) {
+                        try {
+                            const parsed = new Date(dateStr);
+                            if (!isNaN(parsed.getTime())) {
+                                return parsed;
+                            }
+                        } catch (e) {
+                            return null;
+                        }
+                    }
+                    
+                    return null;
+                }
+                
+                // Calculate daily statistics
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const completionsToday = rows.filter(r => {
+                    if (!r.completed) return false;
+                    const date = parseCompletionDate(r.completed);
+                    if (!date) return false;
+                    
+                    date.setHours(0, 0, 0, 0);
+                    return date.getTime() === today.getTime();
+                }).length;
+                
+                // Calculate completion dates for streak tracking
+                const completionDates = new Set();
+                rows.forEach(r => {
+                    if (!r.completed) return;
+                    const date = parseCompletionDate(r.completed);
+                    if (date) {
+                        date.setHours(0, 0, 0, 0);
+                        completionDates.add(date.getTime());
+                    }
+                });
+                
+                // Calculate streak (consecutive days with at least 1 completion)
+                let currentStreak = 0;
+                let checkDate = new Date(today);
+                while (true) {
+                    if (completionDates.has(checkDate.getTime())) {
+                        currentStreak++;
+                        checkDate.setDate(checkDate.getDate() - 1);
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Check for weekend completions (Saturday = 6, Sunday = 0)
+                const weekendCompletions = rows.filter(r => {
+                    if (!r.completed) return false;
+                    const date = parseCompletionDate(r.completed);
+                    if (!date) return false;
+                    
+                    const day = date.getDay();
+                    return day === 0 || day === 6;
+                }).length;
+                
+                // Find best single day
+                const dailyCounts = {};
+                rows.forEach(r => {
+                    if (!r.completed) return;
+                    const date = parseCompletionDate(r.completed);
+                    if (!date) return;
+                    
+                    const dateKey = date.toDateString();
+                    dailyCounts[dateKey] = (dailyCounts[dateKey] || 0) + 1;
+                });
+                
+                const bestDay = Math.max(0, ...Object.values(dailyCounts));
+                
                 // GAMIFICATION: Check achievements
                 const achievements = [
                     // === STANDARD ACHIEVEMENTS (Always Visible) ===
@@ -730,7 +822,17 @@
                     
                     // Theme Challenges
                     { id: 'theme_collector', name: 'Theme Collector', desc: 'Try all 5 themes', icon: '🎨', unlocked: themeHistory.length >= 5, hidden: true },
-                    { id: 'indecisive', name: 'Indecisive', desc: 'Change theme 10 times', icon: '🔄', unlocked: themeChanges >= 10, hidden: true }
+                    { id: 'indecisive', name: 'Indecisive', desc: 'Change theme 10 times', icon: '🔄', unlocked: themeChanges >= 10, hidden: true },
+                    
+                    // === DAILY PRODUCTIVITY ACHIEVEMENTS ===
+                    { id: 'daily_5', name: 'Hot Streak', desc: 'Complete 5+ requirements in one day', icon: '🔥', unlocked: completionsToday >= 5, hidden: false },
+                    { id: 'daily_10', name: 'Power Hour', desc: 'Complete 10+ requirements in one day', icon: '⚡', unlocked: completionsToday >= 10, hidden: false },
+                    { id: 'daily_15', name: 'Unstoppable', desc: 'Complete 15+ requirements in one day', icon: '🚀', unlocked: completionsToday >= 15, hidden: false },
+                    { id: 'best_day_10', name: 'Personal Best', desc: 'Complete 10+ requirements in a single day (all-time)', icon: '🏅', unlocked: bestDay >= 10, hidden: true },
+                    { id: 'best_day_20', name: 'Legend', desc: 'Complete 20+ requirements in a single day', icon: '👑', unlocked: bestDay >= 20, hidden: true },
+                    { id: 'streak_3', name: '3-Day Warrior', desc: 'Complete requirements 3 days in a row', icon: '📅', unlocked: currentStreak >= 3, hidden: true },
+                    { id: 'streak_7', name: 'Week Champion', desc: 'Complete requirements 7 days in a row', icon: '🗓️', unlocked: currentStreak >= 7, hidden: true },
+                    { id: 'weekend_5', name: 'Weekend Warrior', desc: 'Complete 5+ requirements on weekends', icon: '🎮', unlocked: weekendCompletions >= 5, hidden: true }
                 ];
                 
                 const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -753,6 +855,25 @@
                 html += (overallPercent > 10 ? overallPercent + '%' : '');
                 html += '</div></div>';
                 html += '<p class="text-center text-gray-600">' + totalCompleted + ' of ' + totalReqs + ' requirements completed</p>';
+                
+                // Show today's completions if any dates are tracked
+                if (completionsToday > 0 || Object.keys(dailyCounts).length > 0) {
+                    html += '<div class="mt-4 p-3 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200">';
+                    html += '<div class="text-center">';
+                    html += '<span class="text-orange-600 font-semibold">🔥 Today: ' + completionsToday + ' completed</span>';
+                    if (currentStreak > 1) {
+                        html += '<span class="text-gray-500 mx-2">•</span>';
+                        html += '<span class="text-gray-600">' + currentStreak + ' day streak!</span>';
+                    }
+                    html += '</div>';
+                    if (bestDay > completionsToday) {
+                        html += '<div class="text-center text-sm text-gray-500 mt-1">';
+                        html += 'Your best: ' + bestDay + ' in one day 🏆';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+                
                 html += '<div class="text-center mt-3">';
                 html += '<span class="text-lg font-bold text-purple-600">Level ' + level + ' - ' + levelTitle + '</span>';
                 html += '<span class="text-gray-500 mx-2">•</span>';
