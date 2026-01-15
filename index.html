@@ -958,21 +958,6 @@
                 });
                 html += '</div></div>';
                 
-                // DAILY TO-DO LIST (below achievements)
-                html += '<div class="bg-white rounded-lg shadow-lg p-6 mt-6">';
-                html += '<div class="cursor-pointer" onclick="toggleStudentSection(\'todo-list\')">';
-                html += '<div class="flex justify-between items-center mb-4">';
-                html += '<h2 class="text-xl font-bold text-gray-800">📝 Today\'s To-Do</h2>';
-                html += '<span id="todo-list-toggle" class="text-2xl text-gray-600">▲</span>';
-                html += '</div></div>';
-                html += '<div id="todo-list" style="display: block;">';
-                html += '<div id="todo-items-container"></div>';
-                html += '<div class="mt-3">';
-                html += '<input type="text" id="new-todo-input" placeholder="Add a task..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">';
-                html += '<button onclick="addTodoItem()" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ Add Task</button>';
-                html += '</div>';
-                html += '</div></div>';
-                
                 html += '</div>';
                 
                 // CENTER: Requirements (6 columns on large screens)
@@ -1148,9 +1133,6 @@
                 
                 document.getElementById('student-content').innerHTML = html;
                 
-                // Render the to-do list after DOM is ready
-                setTimeout(() => renderTodoList(), 100);
-                
             } catch (err) {
                 console.error('Load progress error:', err);
                 showError('Failed to load progress');
@@ -1218,117 +1200,6 @@
             studentCollapsedDomains = {};
             loadStudentProgress();
         }
-        
-        // ============= TO-DO LIST FUNCTIONS =============
-        
-        function loadTodoList() {
-            const today = new Date().toDateString();
-            const savedData = localStorage.getItem('studentTodoList');
-            
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                // Reset if it's a new day
-                if (data.date !== today) {
-                    localStorage.setItem('studentTodoList', JSON.stringify({
-                        date: today,
-                        items: []
-                    }));
-                    return [];
-                }
-                return data.items;
-            }
-            
-            localStorage.setItem('studentTodoList', JSON.stringify({
-                date: today,
-                items: []
-            }));
-            return [];
-        }
-        
-        function saveTodoList(items) {
-            const today = new Date().toDateString();
-            localStorage.setItem('studentTodoList', JSON.stringify({
-                date: today,
-                items: items
-            }));
-        }
-        
-        function renderTodoList() {
-            const items = loadTodoList();
-            const container = document.getElementById('todo-items-container');
-            
-            if (!container) return;
-            
-            if (items.length === 0) {
-                container.innerHTML = '<p class="text-sm text-gray-500 italic text-center py-4">No tasks yet. Add one below!</p>';
-                return;
-            }
-            
-            let html = '<ul class="space-y-2">';
-            items.forEach((item, index) => {
-                const checked = item.completed ? 'checked' : '';
-                const lineThrough = item.completed ? 'line-through text-gray-400' : 'text-gray-800';
-                
-                html += '<li class="flex items-start gap-2 p-2 bg-gray-50 rounded">';
-                html += '<input type="checkbox" ' + checked + ' onchange="toggleTodoItem(' + index + ')" class="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">';
-                html += '<span class="flex-1 text-sm ' + lineThrough + '">' + escapeHtml(item.text) + '</span>';
-                html += '<button onclick="deleteTodoItem(' + index + ')" class="text-red-500 hover:text-red-700 text-xs">✕</button>';
-                html += '</li>';
-            });
-            html += '</ul>';
-            
-            const completed = items.filter(i => i.completed).length;
-            html += '<p class="text-xs text-gray-500 mt-2 text-center">' + completed + ' of ' + items.length + ' completed</p>';
-            
-            container.innerHTML = html;
-        }
-        
-        function addTodoItem() {
-            const input = document.getElementById('new-todo-input');
-            const text = input.value.trim();
-            
-            if (!text) return;
-            
-            const items = loadTodoList();
-            items.push({
-                text: text,
-                completed: false
-            });
-            saveTodoList(items);
-            input.value = '';
-            renderTodoList();
-        }
-        
-        function toggleTodoItem(index) {
-            const items = loadTodoList();
-            if (items[index]) {
-                items[index].completed = !items[index].completed;
-                saveTodoList(items);
-                renderTodoList();
-            }
-        }
-        
-        function deleteTodoItem(index) {
-            const items = loadTodoList();
-            items.splice(index, 1);
-            saveTodoList(items);
-            renderTodoList();
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // Allow Enter key to add todo items
-        document.addEventListener('DOMContentLoaded', function() {
-            document.addEventListener('keypress', function(e) {
-                if (e.target.id === 'new-todo-input' && e.key === 'Enter') {
-                    addTodoItem();
-                }
-            });
-        });
         
         // ============= INCOMPLETE FILTER FUNCTION =============
         
