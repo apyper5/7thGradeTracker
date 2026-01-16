@@ -218,8 +218,25 @@
                     return;
                 }
                 accessToken = resp.access_token;
-                currentView = 'admin';
-                renderApp();
+                
+                // CRITICAL: Check if user is authorized teacher
+                try {
+                    const authCheck = await callAppsScript({ action: 'teacherCheck' });
+                    console.log('Authorization check:', authCheck);
+                    
+                    if (!authCheck.authorized) {
+                        showError('Unauthorized: Only Franklin Discovery Academy teachers can access this panel. Your email: ' + (authCheck.email || 'unknown'));
+                        accessToken = null;
+                        return;
+                    }
+                    
+                    // User is authorized - proceed to admin view
+                    currentView = 'admin';
+                    renderApp();
+                } catch (err) {
+                    showError('Authorization check failed: ' + err.message);
+                    accessToken = null;
+                }
             };
             
             if (accessToken === null) {
