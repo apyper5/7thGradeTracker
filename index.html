@@ -119,7 +119,7 @@
         console.log('Script starting...');
         
         // SECURE: No API keys exposed - all calls go through Apps Script
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx853Gb0BylD62JN3li9kZHbV_NjcHs1tfuMsaFWZnbgcZjHbJvGsIOAX7DTjPiDNc2og/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/franklindiscovery.org/s/AKfycbzvpC6oCA5Pg-OE4w7djAIVSnQgnR9wDgoGWjX0meQM2avWz02qQGB1GC9WSjBgBpJRtQ/exec';
         const CLIENT_ID = '326589757916-ce3tt4ji7hcdk1irgg0cv3f08mh1f7qj.apps.googleusercontent.com';
         
         let tokenClient;
@@ -149,9 +149,14 @@
             renderApp();
         }
         
-        // Call Apps Script securely
+        // Call Apps Script securely - now includes OAuth token for teacher authentication
         async function callAppsScript(params, method = 'GET') {
             const url = new URL(APPS_SCRIPT_URL);
+            
+            // Add OAuth token to params if we have one (for teacher authentication)
+            if (accessToken) {
+                params.token = accessToken;
+            }
             
             if (method === 'GET') {
                 Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
