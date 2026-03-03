@@ -436,8 +436,8 @@
             // Add countdown if there are IXL requirements
             if (ixlRequirements.length > 0) {
                 // Split by subject
-                const elaIxl = ixlRequirements.filter(item => item.subject === 'ELA');
-                const mathIxl = ixlRequirements.filter(item => item.subject === 'Math');
+                const elaIxl = ixlRequirements.filter(item => item.subject.includes('English'));
+                const mathIxl = ixlRequirements.filter(item => item.subject.includes('Math'));
                 
                 const elaCompleted = elaIxl.filter(item => item.completed).length;
                 const elaRemaining = elaIxl.length - elaCompleted;
@@ -1097,8 +1097,8 @@
                     html += '<div id="ixl-countdown" style="display: block;">';
                     
                     // Split by subject
-                    const elaIxl = ixlRows.filter(r => r.subject === 'ELA');
-                    const mathIxl = ixlRows.filter(r => r.subject === 'Math');
+                    const elaIxl = ixlRows.filter(r => r.subject.includes('English'));
+                    const mathIxl = ixlRows.filter(r => r.subject.includes('Math'));
                     
                     const elaCompleted = elaIxl.filter(r => r.completed).length;
                     const elaRemaining = elaIxl.length - elaCompleted;
