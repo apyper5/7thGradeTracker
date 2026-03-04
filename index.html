@@ -536,9 +536,9 @@
                         
                         for (const req of reqs) {
                             html += '<div class="flex items-center gap-3 bg-gray-50 p-3 rounded">';
-                            html += '<input type="text" value="' + req.completed + '" onchange="handleUpdate(' + req.rowNum + ', \'F\', this.value)" placeholder="X" class="w-16 px-2 py-1 border rounded text-center">';
+                            html += '<input type="text" value="' + req.completed + '" onchange="handleUpdate(' + req.rowNum + ', \'G\', this.value)" placeholder="X" class="w-16 px-2 py-1 border rounded text-center">';
                             html += '<span class="flex-1 text-sm text-gray-700">' + req.requirement + '</span>';
-                            html += '<input type="text" value="' + req.note + '" onchange="handleUpdate(' + req.rowNum + ', \'G\', this.value)" placeholder="Note" class="w-48 px-2 py-1 border rounded text-sm">';
+                            html += '<input type="text" value="' + req.note + '" onchange="handleUpdate(' + req.rowNum + ', \'H\', this.value)" placeholder="Note" class="w-48 px-2 py-1 border rounded text-sm">';
                             html += '</div>';
                         }
                         
